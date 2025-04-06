@@ -100,6 +100,16 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-envers</artifactId>
+            <version>6.4.4.Final</version> <!-- Usá la versión que se adapte a tu Hibernate principal -->
+        </dependency>
+
     </dependencies>
 
     <build>
