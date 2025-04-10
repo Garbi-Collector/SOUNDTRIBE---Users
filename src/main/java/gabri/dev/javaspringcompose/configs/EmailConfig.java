@@ -25,7 +25,7 @@ public class EmailConfig {
     private Properties getMailProperties(){
         Properties properties = new Properties();
         properties.put("mail.smtp.auth", "true");
-        properties.put("mail.smtp.starttls" + ".emable", "true");
+        properties.put("mail.smtp.starttls" + ".enable", "true");
         properties.put("mail.smtp.host", "smtp" + ".gmail.com");
         properties.put("mail.smtp.port", "587");
         return properties;
