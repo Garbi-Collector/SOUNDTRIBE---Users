@@ -25,4 +25,9 @@ public class FotoController {
     public ResponseEntity<?> getFotoById(@PathVariable Long id) {
         return minioService.getImageById(id);
     }
+
+    @GetMapping("/image/{filename}")
+    public ResponseEntity<?> getImage(@PathVariable String filename) {
+        return minioService.getImageByFileName(filename);
+    }
 }

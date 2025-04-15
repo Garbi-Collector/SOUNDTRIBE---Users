@@ -76,6 +76,7 @@ public class MinioServiceImpl implements MinioService {
         return modelMapper.map(fotoSaved, FotoModel.class);
     }
 
+    @Override
     public ResponseEntity<?> getImageById(Long id) {
         Optional<FotoEntity> optionalFoto = repository.findById(id);
         if (optionalFoto.isEmpty()) {
@@ -100,6 +101,28 @@ public class MinioServiceImpl implements MinioService {
             throw new SoundtribeUserMiniOException("No se pudo obtener la imagen desde MinIO "+e);
         }
     }
+
+    @Override
+    public ResponseEntity<?> getImageByFileName(String filename) {
+        try {
+            InputStream inputStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(filename)
+                            .build()
+            );
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(new InputStreamResource(inputStream));
+
+        } catch (Exception e) {
+            throw new SoundtribeUserMiniOException("No se pudo obtener la imagen desde MinIO " + e);
+        }
+    }
+
+
+
 
 }
 

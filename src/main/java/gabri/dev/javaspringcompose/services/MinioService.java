@@ -8,7 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public interface MinioService {
 
-    public FotoModel upload (MultipartFile file);
-    public ResponseEntity<?> getImageById(Long id);
-
+    FotoModel upload (MultipartFile file);
+    ResponseEntity<?> getImageById(Long id);
+    ResponseEntity<?> getImageByFileName(String filename);
 }

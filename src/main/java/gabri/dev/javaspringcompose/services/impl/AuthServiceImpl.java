@@ -1,27 +1,36 @@
 package gabri.dev.javaspringcompose.services.impl;
 
+import gabri.dev.javaspringcompose.dtos.auth.JwtLoginResponseDto;
+import gabri.dev.javaspringcompose.dtos.auth.LoginRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.RegisterRequestDto;
 import gabri.dev.javaspringcompose.dtos.notification.NotificationEmail;
+import gabri.dev.javaspringcompose.dtos.user.PerfilUsuarioDto;
 import gabri.dev.javaspringcompose.entities.FotoEntity;
 import gabri.dev.javaspringcompose.entities.TokenEntity;
 import gabri.dev.javaspringcompose.entities.UserEntity;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserTokenException;
-import gabri.dev.javaspringcompose.models.FotoModel;
 import gabri.dev.javaspringcompose.repositories.TokenRepository;
 import gabri.dev.javaspringcompose.repositories.UserRepository;
+import gabri.dev.javaspringcompose.security.JwtProvider;
 import gabri.dev.javaspringcompose.services.MinioService;
 import gabri.dev.javaspringcompose.services.AuthService;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -43,8 +52,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private EmailServiceImpl emailService;
+
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtProvider jwtProvider;
+
 
     @Transactional
     @Override
@@ -88,11 +105,79 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public JwtLoginResponseDto login(LoginRequestDto loginRequestDto) {
+        // 1. Buscar usuario por username o email
+        Optional<UserEntity> optionalUser = repository.findByUsernameOrEmail(
+                loginRequestDto.getEmailOrUsername(),
+                loginRequestDto.getEmailOrUsername()
+        );
+
+        if (optionalUser.isEmpty()) {
+            throw new SoundtribeUserException("Usuario no encontrado");
+        }
+
+        UserEntity user = optionalUser.get();
+
+        // 2. Verificar contraseña
+        if (!passwordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+            throw new SoundtribeUserException("Contraseña incorrecta");
+        }
+
+        // 3. Verificar si la cuenta está habilitada
+        if (!user.isEnabled()) {
+            throw new SoundtribeUserException("La cuenta no está verificada. Por favor revisá tu correo.");
+        }
+
+        // 4. Autenticar el usuario
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                user.getUsername(),
+                loginRequestDto.getPassword()
+        );
+
+        Authentication authenticated = authenticationManager.authenticate(authentication); // <-- Importantísimo
+
+        // 5. Generar JWT
+        String token = jwtProvider.generateToken(authenticated);
+
+        return new JwtLoginResponseDto(token, user.getUsername(), user.getEmail());
+    }
+
+
+
+    @Override
     public void verificarCuenta(String token) {
         Optional<TokenEntity> opToken = tokenRepository.findByToken(token);
         opToken.orElseThrow(()-> new SoundtribeUserTokenException("token invalido"));
         habilitarUsuario(opToken.get());
     }
+
+    @Override
+    public boolean emailExists(String email) {
+        return repository.existsByEmail(email);
+    }
+
+
+    @Override
+    public List<PerfilUsuarioDto> obtenerUsuariosHabilitados() {
+        List<UserEntity> usuarios = repository.findAllByEnabledTrue();
+
+        return usuarios.stream()
+                .map(user -> new PerfilUsuarioDto(
+                        user.getUsername(),
+                        user.getFoto() != null ? generarUrlImagen(user.getFoto().getFileUrl()) : null
+                ))
+                .collect(Collectors.toList());
+    }
+
+    // Este método construye la URL completa para acceder a la imagen de MinIO
+    private String generarUrlImagen(String fileUrl) {
+        return "http://localhost:8080/auth/image/" + fileUrl; // o como tengas configurado tu controller para imágenes
+    }
+
+
+
+
+
 
     @Transactional
     protected void habilitarUsuario(TokenEntity token) {

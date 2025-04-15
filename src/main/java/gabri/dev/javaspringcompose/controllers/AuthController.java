@@ -1,14 +1,20 @@
 package gabri.dev.javaspringcompose.controllers;
 
+import gabri.dev.javaspringcompose.dtos.auth.JwtLoginResponseDto;
+import gabri.dev.javaspringcompose.dtos.auth.LoginRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.RegisterRequestDto;
+import gabri.dev.javaspringcompose.dtos.user.PerfilUsuarioDto;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
 import gabri.dev.javaspringcompose.services.AuthService;
+import gabri.dev.javaspringcompose.services.MinioService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -37,6 +43,32 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequestDto loginRequestDto) {
+        try {
+            JwtLoginResponseDto response = authService.login(loginRequestDto);
+            return ResponseEntity.ok(response);
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/email-exists")
+    public ResponseEntity<Boolean> emailExists(@RequestParam("email") String email) {
+        boolean exists = authService.emailExists(email);
+        return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping("/usuarios-habilitados")
+    public ResponseEntity<List<PerfilUsuarioDto>> obtenerUsuariosHabilitados() {
+        List<PerfilUsuarioDto> usuarios = authService.obtenerUsuariosHabilitados();
+        return ResponseEntity.ok(usuarios);
+    }
+
+
+
+
 
     /**
      * verifica la cuenta del usuario a partir del token de activacion.
