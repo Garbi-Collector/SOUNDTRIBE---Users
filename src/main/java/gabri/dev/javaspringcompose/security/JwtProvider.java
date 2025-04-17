@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.*;
 import java.security.cert.CertificateException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static io.jsonwebtoken.Jwts.parser;
 
@@ -39,11 +41,18 @@ public class JwtProvider {
 
     public String generateToken(Authentication authentication) {
         User principal = (User) authentication.getPrincipal();
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", principal.getAuthorities().stream()
+                .findFirst().orElseThrow().getAuthority());
+
         return Jwts.builder()
                 .setSubject(principal.getUsername())
+                .addClaims(claims)
                 .signWith(getPrivateKey())
                 .compact();
     }
+
 
     private PrivateKey getPrivateKey() {
         try {

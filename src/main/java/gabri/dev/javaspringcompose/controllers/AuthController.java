@@ -6,7 +6,6 @@ import gabri.dev.javaspringcompose.dtos.auth.RegisterRequestDto;
 import gabri.dev.javaspringcompose.dtos.user.PerfilUsuarioDto;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
 import gabri.dev.javaspringcompose.services.AuthService;
-import gabri.dev.javaspringcompose.services.MinioService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,6 +21,7 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
 
 
     /**

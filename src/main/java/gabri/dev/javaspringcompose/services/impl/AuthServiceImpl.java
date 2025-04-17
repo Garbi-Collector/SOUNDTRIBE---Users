@@ -26,7 +26,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -107,10 +106,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public JwtLoginResponseDto login(LoginRequestDto loginRequestDto) {
         // 1. Buscar usuario por username o email
-        Optional<UserEntity> optionalUser = repository.findByUsernameOrEmail(
-                loginRequestDto.getEmailOrUsername(),
-                loginRequestDto.getEmailOrUsername()
-        );
+        Optional<UserEntity> optionalUser = repository.findByEmail(loginRequestDto.getEmail());
 
         if (optionalUser.isEmpty()) {
             throw new SoundtribeUserException("Usuario no encontrado");
