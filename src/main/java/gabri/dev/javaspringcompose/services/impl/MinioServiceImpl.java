@@ -6,9 +6,7 @@ import gabri.dev.javaspringcompose.models.FotoModel;
 import gabri.dev.javaspringcompose.models.enums.FileType;
 import gabri.dev.javaspringcompose.repositories.FotoRepository;
 import gabri.dev.javaspringcompose.services.MinioService;
-import io.minio.GetObjectArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
+import io.minio.*;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -121,8 +119,27 @@ public class MinioServiceImpl implements MinioService {
         }
     }
 
-
-
+    @Override
+    public Optional<FotoEntity> getStandardImage(String fileName) {
+        try {
+            StatObjectResponse statResponse = minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(fileName)
+                            .build()
+            );
+            if (statResponse != null) {
+                FotoEntity fotoEntity = new FotoEntity();
+                fotoEntity.setFileName(fileName);
+                fotoEntity.setFileUrl(fileName);
+                fotoEntity.setFileType(FileType.PNG_IMAGE);
+                return Optional.of(fotoEntity);
+            }
+        } catch (Exception e) {
+            throw new SoundtribeUserMiniOException("Error al verificar imagen estándar en MinIO: " + e.getMessage());
+        }
+        return Optional.empty();
+    }
 
 }
 

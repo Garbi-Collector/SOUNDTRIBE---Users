@@ -1,10 +1,14 @@
 package gabri.dev.javaspringcompose.security;
 
+import gabri.dev.javaspringcompose.entities.UserEntity;
+import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserJWTException;
+import gabri.dev.javaspringcompose.repositories.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
@@ -15,11 +19,15 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static io.jsonwebtoken.Jwts.parser;
 
 @Service
 public class JwtProvider {
+
+    @Autowired
+    UserRepository repository;
 
     private KeyStore keyStore;
 
@@ -42,16 +50,28 @@ public class JwtProvider {
     public String generateToken(Authentication authentication) {
         User principal = (User) authentication.getPrincipal();
 
+        // Buscar el usuario desde tu base de datos
+        Optional<UserEntity> userOptional = repository.findByUsername(principal.getUsername());
+
+        if (userOptional.isEmpty()) {
+            throw new SoundtribeUserException("Usuario no encontrado al generar el token");
+        }
+
+        UserEntity user = userOptional.get();
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", principal.getAuthorities().stream()
                 .findFirst().orElseThrow().getAuthority());
+        claims.put("email", user.getEmail());
+        claims.put("username", user.getUsername());
 
         return Jwts.builder()
-                .setSubject(principal.getUsername())
+                .setSubject(user.getUsername())
                 .addClaims(claims)
                 .signWith(getPrivateKey())
                 .compact();
     }
+
 
 
     private PrivateKey getPrivateKey() {
@@ -90,4 +110,21 @@ public class JwtProvider {
 
         return claims.getSubject();
     }
+    public Claims getAllClaimsFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getPublicKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    public String getEmailFromToken(String token) {
+        return getAllClaimsFromToken(token).get("email", String.class);
+    }
+
+    public String getRoleFromToken(String token) {
+        return getAllClaimsFromToken(token).get("role", String.class);
+    }
+
+
 }

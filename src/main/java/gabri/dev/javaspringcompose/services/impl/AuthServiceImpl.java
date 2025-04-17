@@ -9,16 +9,21 @@ import gabri.dev.javaspringcompose.entities.FotoEntity;
 import gabri.dev.javaspringcompose.entities.TokenEntity;
 import gabri.dev.javaspringcompose.entities.UserEntity;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
+import gabri.dev.javaspringcompose.exceptions.SoundtribeUserMiniOException;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserTokenException;
+import gabri.dev.javaspringcompose.models.enums.Rol;
+import gabri.dev.javaspringcompose.repositories.FotoRepository;
 import gabri.dev.javaspringcompose.repositories.TokenRepository;
 import gabri.dev.javaspringcompose.repositories.UserRepository;
 import gabri.dev.javaspringcompose.security.JwtProvider;
 import gabri.dev.javaspringcompose.services.MinioService;
 import gabri.dev.javaspringcompose.services.AuthService;
+import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -33,6 +38,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+
+    @Value("${app.back.url}")
+    private String backUrl;
+
 
     @Autowired
     private UserRepository repository;
@@ -61,24 +70,33 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Autowired
+    private FotoRepository fotoRepository;
 
     @Transactional
     @Override
     public void signup(RegisterRequestDto user, MultipartFile file) throws MessagingException {
 
         //1. verificar si ya esta registrado
-        if (repository.existsByEmail(user.getEmail())){
+        if (repository.existsByEmail(user.getEmail())) {
             throw new SoundtribeUserException("El email existe, esta cuenta existe");
         }
-        if (repository.existsByUsername(user.getUsername())){
+        if (repository.existsByUsername(user.getUsername())) {
             throw new SoundtribeUserException("El username existe, esta cuenta existe");
         }
 
-        //2. Guardar la imagen en la DB
-        FotoEntity fileUploaded = null;
+
+        // 2. Obtener la imagen de perfil: personalizada o estándar
+        FotoEntity fileUploaded;
         if (file != null && !file.isEmpty()) {
             fileUploaded = modelMapper.map(minioService.upload(file), FotoEntity.class);
+        } else {
+            String defaultImageName = user.getRol() == Rol.ADMIN ? "ADMIN.png" : "perfilstandar.png";
+            fileUploaded = fotoRepository.findByFileName(defaultImageName)
+                    .orElseThrow(() -> new SoundtribeUserMiniOException("Imagen por defecto no encontrada: " + defaultImageName));
         }
+
+
 
         //3. Generar la entidad Usuario y asignarle una imagen como foto de perfil
         UserEntity userEntity = UserEntity.builder()
@@ -99,7 +117,7 @@ public class AuthServiceImpl implements AuthService {
         emailService.enviarMail(new NotificationEmail().builder()
                 .asunto("Porfavor active su cuenta")
                 .destinatario(userSaved.getEmail())
-                .mensaje("http://localhost:8080/auth/accountVerification/"+token)
+                .mensaje(backUrl + "auth/accountVerification/" + token)
                 .build());
     }
 
@@ -139,11 +157,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
 
-
     @Override
     public void verificarCuenta(String token) {
         Optional<TokenEntity> opToken = tokenRepository.findByToken(token);
-        opToken.orElseThrow(()-> new SoundtribeUserTokenException("token invalido"));
+        opToken.orElseThrow(() -> new SoundtribeUserTokenException("token invalido"));
         habilitarUsuario(opToken.get());
     }
 
@@ -165,20 +182,16 @@ public class AuthServiceImpl implements AuthService {
                 .collect(Collectors.toList());
     }
 
-    // Este método construye la URL completa para acceder a la imagen de MinIO
+    // Este méto-do construye la URL completa para acceder a la imagen de MinIO
     private String generarUrlImagen(String fileUrl) {
-        return "http://localhost:8080/auth/image/" + fileUrl; // o como tengas configurado tu controller para imágenes
+        return backUrl + "auth/image/" + fileUrl; // o como tengas configurado tu controller para imágenes
     }
-
-
-
-
 
 
     @Transactional
     protected void habilitarUsuario(TokenEntity token) {
         String username = token.getUser().getUsername();
-        UserEntity user = repository.findByUsername(username).orElseThrow(()-> new SoundtribeUserTokenException("usuario no encontrado: "+ username));
+        UserEntity user = repository.findByUsername(username).orElseThrow(() -> new SoundtribeUserTokenException("usuario no encontrado: " + username));
         user.setEnabled(true);
         userRepository.save(user);
     }
@@ -194,4 +207,62 @@ public class AuthServiceImpl implements AuthService {
         tokenRepository.save(tokenEntity);
         return token;
     }
+
+
+    @PostConstruct
+    public void checkAndStoreStandardImage() {
+        checkAndStoreImageIfMissing("perfilstandar.png");
+        checkAndStoreImageIfMissing("ADMIN.png");
+        crearAdminPorDefecto();
+    }
+
+    private void checkAndStoreImageIfMissing(String imageName) {
+        Optional<FotoEntity> fotoEntityOptional = fotoRepository.findByFileName(imageName);
+
+        if (fotoEntityOptional.isEmpty()) {
+            Optional<FotoEntity> image = minioService.getStandardImage(imageName); // Hacé el méto-do más flexible
+            if (image.isPresent()) {
+                fotoRepository.save(image.get());
+                System.out.println("Imagen estándar '" + imageName + "' guardada en la base de datos.");
+            } else {
+                System.out.println("No se encontró la imagen '" + imageName + "' en MinIO.");
+            }
+        } else {
+            System.out.println("La imagen '" + imageName + "' ya está en la base de datos.");
+        }
+    }
+
+
+    public void crearAdminPorDefecto() {
+        String emailAdmin = "gabriel.scipioni21@gmail.com";
+        String usernameAdmin = "gabriel";
+
+        // Evitar duplicado
+        if (!repository.existsByEmail(emailAdmin) && !repository.existsByUsername(usernameAdmin)) {
+            String defaultImageName = "ADMIN.png";
+
+            FotoEntity imagenAdmin = fotoRepository.findByFileName(defaultImageName)
+                    .orElseThrow(() -> new SoundtribeUserMiniOException("Imagen de admin no encontrada: " + defaultImageName));
+
+            UserEntity admin = UserEntity.builder()
+                    .email(emailAdmin)
+                    .username(usernameAdmin)
+                    .password(passwordEncoder.encode("21082003"))
+                    .rol(Rol.ADMIN)
+                    .enabled(true)
+                    .descripcion("el mascapito de esta red social")
+                    .foto(imagenAdmin)
+                    .build();
+
+            repository.save(admin);
+            System.out.println("Administrador por defecto creado.");
+        } else {
+            System.out.println("Administrador ya existe, no se crea uno nuevo.");
+        }
+    }
+
+
+
+
+
 }

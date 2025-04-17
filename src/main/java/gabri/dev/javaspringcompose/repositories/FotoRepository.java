@@ -8,4 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface FotoRepository extends JpaRepository<FotoEntity, Long> {
+    Optional<FotoEntity> findByFileName(String fileName);
 }

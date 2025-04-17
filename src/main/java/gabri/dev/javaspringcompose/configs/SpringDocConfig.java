@@ -20,7 +20,7 @@ public class SpringDocConfig {
     /**
      * The app name mapped from application config.
      */
-    @Value("${app.url}") private String url;
+    @Value("${app.back.url}") private String url;
 
     /**
      * The developer name mapped from application config.
