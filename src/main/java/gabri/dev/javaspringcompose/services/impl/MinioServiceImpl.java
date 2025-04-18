@@ -140,6 +140,5 @@ public class MinioServiceImpl implements MinioService {
         }
         return Optional.empty();
     }
-
 }
 

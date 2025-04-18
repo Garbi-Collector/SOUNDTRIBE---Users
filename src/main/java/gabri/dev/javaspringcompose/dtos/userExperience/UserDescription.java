@@ -13,10 +13,13 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class UserDescription {
-    String username;
-    String description;
-    String rol;
-    String urlimage;
-    LocalDateTime createdAt;
-    List<UserGet> ArtistasSeguidos;
+    private Long id;
+    private String username;
+    private String description;
+    private String rol;
+    private String urlimage;
+    private String slug;
+    private LocalDateTime createdAt;
+    private Long followersCount;
+    private List<UserGet> ArtistasSeguidos;
 }

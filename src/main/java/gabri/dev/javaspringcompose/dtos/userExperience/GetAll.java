@@ -12,5 +12,5 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class GetAll {
-    List<UserGet> usuarios;
+    private List<UserGet> usuarios;
 }

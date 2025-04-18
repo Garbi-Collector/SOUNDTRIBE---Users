@@ -43,17 +43,38 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
     @Override
+    public GetAll getAll(String jwt) {
+        String email = jwtProvider.getEmailFromToken(jwt);
+
+        List<UserGet> usersGets = userRepository.findAll()
+                .stream()
+                .filter(user -> !user.getEmail().equals(email))
+                .map(this::mapToUserGet)
+                .collect(Collectors.toList());
+
+        return GetAll.builder()
+                .usuarios(usersGets)
+                .build();
+    }
+
+
+    @Override
     public UserDescription getDescription(Long id) {
         UserEntity user = getUserByIdOrThrow(id);
 
         return UserDescription.builder()
+                .id(user.getId())
                 .username(user.getUsername())
                 .description(user.getDescripcion())
                 .rol(user.getRol().name())
                 .urlimage(user.getFoto().getFileUrl())
+                .createdAt(user.getCreatedAt()) // si lo usás
                 .ArtistasSeguidos(getTop5ArtistsFollowedByUser(id))
+                .slug(user.getSlug())
+                .followersCount(followedRepository.countByFollowed(user))
                 .build();
     }
+
 
     @Override
     public UserDescription getDescriptionFromJwt(String jwt) {
@@ -61,11 +82,15 @@ public class UserExperienceServiceImpl implements UserExperienceService {
         UserEntity user = getUserByEmailOrThrow(email);
 
         return UserDescription.builder()
+                .id(user.getId())
                 .username(user.getUsername())
                 .description(user.getDescripcion())
                 .rol(user.getRol().name())
                 .urlimage(user.getFoto().getFileUrl())
+                .createdAt(user.getCreatedAt()) // si lo usás
                 .ArtistasSeguidos(getTop5ArtistsFollowedByUser(user.getId()))
+                .slug(user.getSlug())
+                .followersCount(followedRepository.countByFollowed(user))
                 .build();
     }
 
@@ -97,6 +122,24 @@ public class UserExperienceServiceImpl implements UserExperienceService {
         followedRepository.save(relation);
     }
 
+    @Override
+    public UserDescription getDescriptionBySlug(String slug) {
+        UserEntity user = (UserEntity) userRepository.findBySlug(slug)
+                .orElseThrow(() -> new SoundtribeUserException("Usuario con slug " + slug + " no encontrado"));
+
+        return UserDescription.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .description(user.getDescripcion())
+                .rol(user.getRol().name())
+                .urlimage(user.getFoto().getFileUrl())
+                .createdAt(user.getCreatedAt())
+                .ArtistasSeguidos(getTop5ArtistsFollowedByUser(user.getId()))
+                .followersCount(followedRepository.countByFollowed(user))
+                .build();
+    }
+
+
     // ---------- Métodos privados reutilizables ----------
 
     private UserGet mapToUserGet(UserEntity user) {
@@ -104,8 +147,12 @@ public class UserExperienceServiceImpl implements UserExperienceService {
                 .id(user.getId())
                 .username(user.getUsername())
                 .urlFoto(user.getFoto().getFileUrl())
+                .followersCount(followedRepository.countByFollowed(user))
+                .slug(user.getSlug())
                 .build();
     }
+
+
 
     private UserEntity getUserByIdOrThrow(Long id) {
         return userRepository.findById(id)

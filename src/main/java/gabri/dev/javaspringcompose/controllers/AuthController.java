@@ -60,6 +60,12 @@ public class AuthController {
         return ResponseEntity.ok(exists);
     }
 
+    @GetMapping("/username-exists")
+    public ResponseEntity<Boolean> usernameExists(@RequestParam("username") String username) {
+        boolean exists = authService.usernameExists(username);
+        return ResponseEntity.ok(exists);
+    }
+
     @GetMapping("/usuarios-habilitados")
     public ResponseEntity<List<PerfilUsuarioDto>> obtenerUsuariosHabilitados() {
         List<PerfilUsuarioDto> usuarios = authService.obtenerUsuariosHabilitados();

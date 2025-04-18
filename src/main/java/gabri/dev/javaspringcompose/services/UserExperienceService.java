@@ -8,10 +8,11 @@ import org.springframework.stereotype.Service;
 @Service
 public interface UserExperienceService {
     GetAll getAll();
+    GetAll getAll(String jwt);
     UserDescription getDescription(Long id);
     void followUser(String jwt, Long idToFollow);
 
     UserDescription getDescriptionFromJwt(String jwt);
-
+    UserDescription getDescriptionBySlug(String slug);
     UserGet getUser(String jwt);
 }

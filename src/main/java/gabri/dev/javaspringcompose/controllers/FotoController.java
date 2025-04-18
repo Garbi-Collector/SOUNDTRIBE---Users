@@ -9,7 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/fotos")
-@CrossOrigin(origins = "*") // Opcional: permite requests desde el frontend
 public class FotoController {
 
     @Autowired

@@ -33,6 +33,22 @@ public class UserExperienceController {
         return ResponseEntity.ok(userExperienceService.getAll());
     }
 
+
+    @GetMapping("/all/jwt")
+    public ResponseEntity<GetAll> getAllUsers(
+            @RequestHeader("Authorization") String token
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        return ResponseEntity.ok(userExperienceService.getAll(jwt));
+    }
+
+    @GetMapping("/perfil/slug/{slug}")
+    public ResponseEntity<UserDescription> getUserDescriptionBySlug(@PathVariable("slug") String slug) {
+        return ResponseEntity.ok(userExperienceService.getDescriptionBySlug(slug));
+    }
+
+
+
     // Endpoint para obtener la descripción de un usuario por ID
     @GetMapping("/perfil/{id}")
     public ResponseEntity<UserDescription> getUserDescription(@PathVariable("id") Long id) {

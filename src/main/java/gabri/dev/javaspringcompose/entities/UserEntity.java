@@ -33,6 +33,10 @@ public class UserEntity {
 
     private String descripcion;
 
+    @Column(unique = true)
+    private String slug;
+
+
     @Enumerated(EnumType.STRING)
     @Column(name = "rol", nullable = false)
     private Rol rol;

@@ -13,4 +13,6 @@ public class UserGet {
     private Long id;
     private String username;
     private String urlFoto;
+    private String slug;
+    private Long followersCount;
 }

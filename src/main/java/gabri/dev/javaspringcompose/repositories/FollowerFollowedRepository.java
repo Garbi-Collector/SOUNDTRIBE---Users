@@ -26,4 +26,6 @@ public interface FollowerFollowedRepository extends JpaRepository<FollowerFollow
     List<UserEntity> findTop5FollowedArtistsByFollowerId(@Param("followerId") Long followerId, Pageable pageable);
 
     boolean existsByFollowerAndFollowed(UserEntity follower, UserEntity followed);
+
+    Long countByFollowed(UserEntity user);
 }

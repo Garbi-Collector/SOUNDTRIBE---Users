@@ -31,6 +31,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -114,11 +116,19 @@ public class AuthServiceImpl implements AuthService {
         //5. Generar token para habilitar al usuario
         String token = generarTokenVerificador(userSaved);
 
-        emailService.enviarMail(new NotificationEmail().builder()
+        new NotificationEmail();
+        emailService.enviarMail(NotificationEmail.builder()
                 .asunto("Porfavor active su cuenta")
                 .destinatario(userSaved.getEmail())
                 .mensaje(backUrl + "auth/accountVerification/" + token)
                 .build());
+
+
+        String slug = generarSlug(user.getUsername());
+
+        // Asignar el slug generado al usuario y guardar
+        userSaved.setSlug(slug);
+        repository.save(userSaved);
     }
 
     @Override
@@ -168,6 +178,10 @@ public class AuthServiceImpl implements AuthService {
     public boolean emailExists(String email) {
         return repository.existsByEmail(email);
     }
+    @Override
+    public boolean usernameExists(String username) {
+        return repository.existsByUsername(username);
+    }
 
 
     @Override
@@ -213,7 +227,7 @@ public class AuthServiceImpl implements AuthService {
     public void checkAndStoreStandardImage() {
         checkAndStoreImageIfMissing("perfilstandar.png");
         checkAndStoreImageIfMissing("ADMIN.png");
-        crearAdminPorDefecto();
+        crearUsuariosPorDefecto();
     }
 
     private void checkAndStoreImageIfMissing(String imageName) {
@@ -233,34 +247,59 @@ public class AuthServiceImpl implements AuthService {
     }
 
 
-    public void crearAdminPorDefecto() {
-        String emailAdmin = "gabriel.scipioni21@gmail.com";
-        String usernameAdmin = "gabriel";
+    public void crearUsuariosPorDefecto() {
+        // Creación de usuarios con roles diferentes
+        crearUsuarioPorRol("gabriel.scipioni21@gmail.com", "gabriel", Rol.ADMIN, "ADMIN.png", "el mascapito de esta red social");
+        crearUsuarioPorRol("uwurulos@gmail.com", "uwurulos", Rol.ARTISTA, "perfilstandar.png", "Artista en SoundTribe");
+        crearUsuarioPorRol("watashilittle@gmail.com", "watashi", Rol.OYENTE, "perfilstandar.png", "Oyente en SoundTribe");
+    }
 
-        // Evitar duplicado
-        if (!repository.existsByEmail(emailAdmin) && !repository.existsByUsername(usernameAdmin)) {
-            String defaultImageName = "ADMIN.png";
 
-            FotoEntity imagenAdmin = fotoRepository.findByFileName(defaultImageName)
-                    .orElseThrow(() -> new SoundtribeUserMiniOException("Imagen de admin no encontrada: " + defaultImageName));
+    public void crearUsuarioPorRol(String email, String username, Rol rol, String imagenFileName, String descripcion) {
+        // Verificar si ya existe un usuario con el mismo email o username
+        if (!repository.existsByEmail(email) && !repository.existsByUsername(username)) {
+            FotoEntity imagen = fotoRepository.findByFileName(imagenFileName)
+                    .orElseThrow(() -> new SoundtribeUserMiniOException("Imagen no encontrada: " + imagenFileName));
 
-            UserEntity admin = UserEntity.builder()
-                    .email(emailAdmin)
-                    .username(usernameAdmin)
-                    .password(passwordEncoder.encode("21082003"))
-                    .rol(Rol.ADMIN)
+            UserEntity usuario = UserEntity.builder()
+                    .email(email)
+                    .username(username)
+                    .password(passwordEncoder.encode("21082003"))  // Contraseña fija
+                    .rol(rol)
                     .enabled(true)
-                    .descripcion("el mascapito de esta red social")
-                    .foto(imagenAdmin)
+                    .descripcion(descripcion)
+                    .foto(imagen)
+                    .slug(generarSlug(username))
                     .build();
 
-            repository.save(admin);
-            System.out.println("Administrador por defecto creado.");
+            repository.save(usuario);
+            System.out.println("Usuario " + rol.name() + " creado: " + username);
         } else {
-            System.out.println("Administrador ya existe, no se crea uno nuevo.");
+            System.out.println("Usuario con email " + email + " o username " + username + " ya existe, no se crea uno nuevo.");
         }
     }
 
+    private String generarSlug(String username) {
+        // Paso 1: Limpiar el username, hacer minúsculas y reemplazar caracteres no alfanuméricos con guiones
+        String slugBase = username.trim().toLowerCase().replaceAll("[^a-z0-9]", "-");
+
+        // Paso 2: Crear un código único codificado (ejemplo: UUID + tiempo en milisegundos)
+        String uniqueCode = UUID.randomUUID().toString() + "-" + System.currentTimeMillis();
+
+        // Paso 3: Codificar el código único en Base64 (sin caracteres especiales)
+        String encodedCode = Base64.getUrlEncoder().withoutPadding().encodeToString(uniqueCode.getBytes(StandardCharsets.UTF_8));
+
+        // Paso 4: Asegurarse de que la longitud sea al menos 18 caracteres
+        if (encodedCode.length() < 18) {
+            // Si la longitud es menor, ajustamos a 18 (esto es solo por seguridad)
+            encodedCode = String.format("%-18s", encodedCode).replace(' ', '0');
+        }
+
+        // Paso 5: Concatenar el username con el código único codificado
+        String slug = slugBase + "-" + encodedCode;
+
+        return slug;
+    }
 
 
 

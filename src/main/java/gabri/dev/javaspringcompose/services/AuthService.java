@@ -16,7 +16,7 @@ public interface AuthService {
     JwtLoginResponseDto login(LoginRequestDto user) ;
 
     void verificarCuenta(String token);
-
+    boolean usernameExists(String username);
     List<PerfilUsuarioDto> obtenerUsuariosHabilitados();
 
     boolean emailExists(String email);
