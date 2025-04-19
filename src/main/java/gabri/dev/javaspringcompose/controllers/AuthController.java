@@ -38,7 +38,7 @@ public class AuthController {
 
         try {
             authService.signup(registerRequestDto, file);
-            return ResponseEntity.ok("El registro del usuario fue exitoso. Por favor, chequear el email para verificar la cuenta.");
+            return ResponseEntity.ok("El registro del usuario fue exitoso. Por favor, chequear el email para verificar la cuenta. En caso de no encontrar el email, verifique en su apartado de SPAM");
         } catch (SoundtribeUserException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
