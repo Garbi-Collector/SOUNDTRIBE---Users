@@ -21,5 +21,6 @@ public class UserDescription {
     private String slug;
     private LocalDateTime createdAt;
     private Long followersCount;
+    private Long followedsCount;
     private List<UserGet> ArtistasSeguidos;
 }

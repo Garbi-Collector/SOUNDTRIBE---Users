@@ -30,6 +30,11 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     @Autowired
     private JwtProvider jwtProvider;
 
+
+
+    //      info para rellenar
+
+
     @Override
     public GetAll getAll() {
         List<UserGet> usersGets = userRepository.findAll()
@@ -72,6 +77,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
                 .ArtistasSeguidos(getTop5ArtistsFollowedByUser(id))
                 .slug(user.getSlug())
                 .followersCount(followedRepository.countByFollowed(user))
+                .followedsCount(followedRepository.countByFollower(user)) // <-- esta línea
                 .build();
     }
 
@@ -91,6 +97,26 @@ public class UserExperienceServiceImpl implements UserExperienceService {
                 .ArtistasSeguidos(getTop5ArtistsFollowedByUser(user.getId()))
                 .slug(user.getSlug())
                 .followersCount(followedRepository.countByFollowed(user))
+                .followedsCount(followedRepository.countByFollower(user)) // <-- esta línea
+                .build();
+    }
+
+
+    @Override
+    public UserDescription getDescriptionBySlug(String slug) {
+        UserEntity user = (UserEntity) userRepository.findBySlug(slug)
+                .orElseThrow(() -> new SoundtribeUserException("Usuario con slug " + slug + " no encontrado"));
+
+        return UserDescription.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .description(user.getDescripcion())
+                .rol(user.getRol().name())
+                .urlimage(user.getFoto().getFileUrl())
+                .createdAt(user.getCreatedAt())
+                .ArtistasSeguidos(getTop5ArtistsFollowedByUser(user.getId()))
+                .followersCount(followedRepository.countByFollowed(user))
+                .followedsCount(followedRepository.countByFollower(user))
                 .build();
     }
 
@@ -101,6 +127,11 @@ public class UserExperienceServiceImpl implements UserExperienceService {
         UserEntity user = getUserByEmailOrThrow(email);
         return mapToUserGet(user);
     }
+
+
+
+    // Gestion de Seguidores
+
 
     @Override
     public void followUser(String jwt, Long idToFollow) {
@@ -123,21 +154,31 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
     @Override
-    public UserDescription getDescriptionBySlug(String slug) {
-        UserEntity user = (UserEntity) userRepository.findBySlug(slug)
-                .orElseThrow(() -> new SoundtribeUserException("Usuario con slug " + slug + " no encontrado"));
+    public void unfollowUser(String jwt, Long idToUnfollow) {
+        String followerEmail = jwtProvider.getEmailFromToken(jwt);
+        UserEntity follower = getUserByEmailOrThrow(followerEmail);
+        UserEntity followed = getUserByIdOrThrow(idToUnfollow);
 
-        return UserDescription.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .description(user.getDescripcion())
-                .rol(user.getRol().name())
-                .urlimage(user.getFoto().getFileUrl())
-                .createdAt(user.getCreatedAt())
-                .ArtistasSeguidos(getTop5ArtistsFollowedByUser(user.getId()))
-                .followersCount(followedRepository.countByFollowed(user))
-                .build();
+        if (follower.getId().equals(followed.getId())) {
+                throw new SoundtribeUserException("No puedes dejar de seguirte a ti mismo: " + follower.getEmail());
+        }
+
+        FollowerFollowedEntity relation = followedRepository.findByFollowerAndFollowed(follower, followed)
+                .orElseThrow(() -> new SoundtribeUserException("No estás siguiendo a este usuario"));
+
+        followedRepository.delete(relation);
     }
+
+    @Override
+    public boolean isFollowing(String jwt, Long idToCheck) {
+        String email = jwtProvider.getEmailFromToken(jwt);
+        UserEntity follower = getUserByEmailOrThrow(email);
+        UserEntity followed = getUserByIdOrThrow(idToCheck);
+
+        return followedRepository.existsByFollowerAndFollowed(follower, followed);
+    }
+
+
 
 
     // ---------- Métodos privados reutilizables ----------

@@ -13,6 +13,11 @@ public interface UserExperienceService {
     void followUser(String jwt, Long idToFollow);
 
     UserDescription getDescriptionFromJwt(String jwt);
+
+    void unfollowUser(String jwt, Long idToUnfollow);
+
     UserDescription getDescriptionBySlug(String slug);
     UserGet getUser(String jwt);
+
+    boolean isFollowing(String jwt, Long followedId);
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import org.springframework.data.domain.Pageable;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FollowerFollowedRepository extends JpaRepository<FollowerFollowedEntity, Long> {
@@ -28,4 +29,9 @@ public interface FollowerFollowedRepository extends JpaRepository<FollowerFollow
     boolean existsByFollowerAndFollowed(UserEntity follower, UserEntity followed);
 
     Long countByFollowed(UserEntity user);
+    Long countByFollower(UserEntity user);
+
+
+    Optional<FollowerFollowedEntity> findByFollowerAndFollowed(UserEntity follower, UserEntity followed);
+
 }

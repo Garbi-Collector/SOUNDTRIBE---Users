@@ -26,6 +26,29 @@ public class UserExperienceController {
         return ResponseEntity.ok("Seguido correctamente");
     }
 
+    @DeleteMapping("/unfollow/{id}")
+    public ResponseEntity<String> unfollowUser(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("id") Long idToUnfollow
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        userExperienceService.unfollowUser(jwt, idToUnfollow);
+        return ResponseEntity.ok("Has dejado de seguir al usuario");
+    }
+
+    @GetMapping("/is-following/{id}")
+    public ResponseEntity<Boolean> isFollowing(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("id") Long idToCheck
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        boolean result = userExperienceService.isFollowing(jwt, idToCheck);
+        return ResponseEntity.ok(result);
+    }
+
+
+
+
 
     // Endpoint para obtener todos los usuarios (para exploración)
     @GetMapping("/all")
