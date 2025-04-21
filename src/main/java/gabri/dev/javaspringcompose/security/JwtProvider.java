@@ -74,7 +74,7 @@ public class JwtProvider {
 
 
 
-    private PrivateKey getPrivateKey() {
+    PrivateKey getPrivateKey() {
         try {
             return (PrivateKey) keyStore.getKey(KEY_ALIAS, KEY_PASSWORD.toCharArray());
         } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
@@ -82,7 +82,7 @@ public class JwtProvider {
         }
     }
 
-    private PublicKey getPublicKey() {
+    PublicKey getPublicKey() {
         try {
             return keyStore.getCertificate(KEY_ALIAS).getPublicKey();
         } catch (KeyStoreException e) {
