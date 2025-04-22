@@ -1,5 +1,6 @@
 package gabri.dev.javaspringcompose.controllers;
 
+import gabri.dev.javaspringcompose.dtos.auth.ChangePasswordRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.JwtLoginResponseDto;
 import gabri.dev.javaspringcompose.dtos.auth.LoginRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.RegisterRequestDto;
@@ -22,8 +23,7 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-
-
+    //      AUTENTICACION
     /**
      * registra un nuevo usuario en la plataforma.
      */
@@ -44,6 +44,15 @@ public class AuthController {
         }
     }
 
+    /**
+     * verifica la cuenta del usuario a partir del token de activacion.
+     */
+    @GetMapping("/accountVerification/{token}")
+    public ResponseEntity<String> verificarCuenta(@PathVariable String token){
+        authService.verificarCuenta(token);
+        return new ResponseEntity<>("La cuenta se ha activado Exitosamente", HttpStatus.OK);
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDto loginRequestDto) {
         try {
@@ -53,6 +62,8 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
     }
+
+    //      METODOS EUXILIARES
 
     @GetMapping("/email-exists")
     public ResponseEntity<Boolean> emailExists(@RequestParam("email") String email) {
@@ -76,12 +87,25 @@ public class AuthController {
 
 
 
-    /**
-     * verifica la cuenta del usuario a partir del token de activacion.
-     */
-    @GetMapping("/accountVerification/{token}")
-    public ResponseEntity<String> verificarCuenta(@PathVariable String token){
-        authService.verificarCuenta(token);
-        return new ResponseEntity<>("La cuenta se ha activado Exitosamente", HttpStatus.OK);
+
+
+
+    //      CAMBIAR DATA
+
+    @PutMapping("/change-password")
+    public ResponseEntity<String> cambiarPassword(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody ChangePasswordRequestDto request) {
+
+        try {
+            // Quitar el prefijo "Bearer " del token
+            String token = authHeader.replace("Bearer ", "");
+            authService.cambiarPassword(token, request);
+            return ResponseEntity.ok("Contraseña actualizada correctamente");
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
+
+
 }

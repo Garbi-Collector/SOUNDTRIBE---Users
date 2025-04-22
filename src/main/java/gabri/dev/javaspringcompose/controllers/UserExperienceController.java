@@ -3,10 +3,13 @@ package gabri.dev.javaspringcompose.controllers;
 import gabri.dev.javaspringcompose.dtos.userExperience.GetAll;
 import gabri.dev.javaspringcompose.dtos.userExperience.UserDescription;
 import gabri.dev.javaspringcompose.dtos.userExperience.UserGet;
+import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
 import gabri.dev.javaspringcompose.services.UserExperienceService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/user")
@@ -94,5 +97,83 @@ public class UserExperienceController {
     ) {
         String jwt = token.replace("Bearer ", "");
         return ResponseEntity.ok(userExperienceService.getUser(jwt));
+    }
+
+
+
+
+//TODO          DE ACA EN ADELANTE NO ESTA IMPLEMENTADO EN FRONT
+
+
+
+    @PostMapping(value = "/cambiar-foto", consumes = "multipart/form-data")
+    public ResponseEntity<String> cambiarFotoPerfil(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestPart(value = "file") MultipartFile file) {
+
+        try {
+            // Quitar el prefijo "Bearer " del token
+            String token = authHeader.replace("Bearer ", "");
+            userExperienceService.cambiarFotoPerfil(token, file);
+            return ResponseEntity.ok("Foto de perfil actualizada correctamente");
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar la foto de perfil: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/change-description")
+    public ResponseEntity<String> changeDescription(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String newDescription
+    ) {
+        try {
+            String jwt = token.replace("Bearer ", "");
+            userExperienceService.changeDescription(jwt, newDescription);
+            return ResponseEntity.ok("Descripción actualizada correctamente");
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar la descripción: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/generate-slug")
+    public ResponseEntity<String> generateSlug(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String firstWord,
+            @RequestParam String secondWord,
+            @RequestParam int number
+    ) {
+        try {
+            String jwt = token.replace("Bearer ", "");
+            String slug = userExperienceService.changeSlug(jwt,firstWord,secondWord,number);
+            return ResponseEntity.ok(slug);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al generar slug: " + e.getMessage());
+        }
+    }
+
+
+    @GetMapping("/check-first-slug/{firstPart}")
+    public ResponseEntity<Boolean> checkFirstSlug(@PathVariable String firstPart) {
+        boolean exists = userExperienceService.existFirstSlug(firstPart);
+        return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping("/check-second-slug/{secondPart}")
+    public ResponseEntity<Boolean> checkSecondSlug(@PathVariable String secondPart) {
+        boolean exists = userExperienceService.existSecondSlug(secondPart);
+        return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping("/check-number-slug/{number}")
+    public ResponseEntity<Boolean> checkNumberSlug(@PathVariable int number) {
+        boolean exists = userExperienceService.existNumberSlug(number);
+        return ResponseEntity.ok(exists);
     }
 }

@@ -18,4 +18,6 @@ public interface UserRepository extends JpaRepository<UserEntity,Long> {
     List<UserEntity> findAllByEnabledTrue();
 
     Optional<Object> findBySlug(String slug);
+
+    boolean existsBySlug(String slug);
 }

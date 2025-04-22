@@ -1,5 +1,6 @@
 package gabri.dev.javaspringcompose.services.impl;
 
+import gabri.dev.javaspringcompose.dtos.auth.ChangePasswordRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.JwtLoginResponseDto;
 import gabri.dev.javaspringcompose.dtos.auth.LoginRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.RegisterRequestDto;
@@ -11,6 +12,7 @@ import gabri.dev.javaspringcompose.entities.UserEntity;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserMiniOException;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserTokenException;
+import gabri.dev.javaspringcompose.external_APIS.RandomWordService;
 import gabri.dev.javaspringcompose.models.enums.Rol;
 import gabri.dev.javaspringcompose.repositories.FotoRepository;
 import gabri.dev.javaspringcompose.repositories.TokenRepository;
@@ -18,6 +20,7 @@ import gabri.dev.javaspringcompose.repositories.UserRepository;
 import gabri.dev.javaspringcompose.security.JwtProvider;
 import gabri.dev.javaspringcompose.services.MinioService;
 import gabri.dev.javaspringcompose.services.AuthService;
+import io.minio.RemoveObjectArgs;
 import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
@@ -64,6 +67,9 @@ public class AuthServiceImpl implements AuthService {
     private EmailServiceImpl emailService;
 
     @Autowired
+    private RandomWordService randomWordService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -86,7 +92,6 @@ public class AuthServiceImpl implements AuthService {
         if (repository.existsByUsername(user.getUsername())) {
             throw new SoundtribeUserException("El username existe, esta cuenta existe");
         }
-
 
         // 2. Obtener la imagen de perfil: personalizada o estándar
         FotoEntity fileUploaded;
@@ -124,7 +129,7 @@ public class AuthServiceImpl implements AuthService {
                 .build());
 
 
-        String slug = generarSlug(user.getUsername());
+        String slug = generarSlugUnico();
 
         // Asignar el slug generado al usuario y guardar
         userSaved.setSlug(slug);
@@ -195,6 +200,29 @@ public class AuthServiceImpl implements AuthService {
                 ))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public void cambiarPassword(String token, ChangePasswordRequestDto request) {
+        String email = jwtProvider.getEmailFromToken(token);
+
+        UserEntity user = repository.findByEmail(email)
+                .orElseThrow(() -> new SoundtribeUserException("Usuario no encontrado"));
+
+        // Verificar que la contraseña actual sea correcta
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new SoundtribeUserException("La contraseña actual es incorrecta");
+        }
+
+        // Cambiar la contraseña
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        repository.save(user);
+    }
+
+
+
+
+
+
 
     // Este méto-do construye la URL completa para acceder a la imagen de MinIO
     private String generarUrlImagen(String fileUrl) {
@@ -269,7 +297,7 @@ public class AuthServiceImpl implements AuthService {
                     .enabled(true)
                     .descripcion(descripcion)
                     .foto(imagen)
-                    .slug(generarSlug(username))
+                    .slug(generarSlugUnico())
                     .build();
 
             repository.save(usuario);
@@ -279,27 +307,30 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private String generarSlug(String username) {
-        // Paso 1: Limpiar el username, hacer minúsculas y reemplazar caracteres no alfanuméricos con guiones
-        String slugBase = username.trim().toLowerCase().replaceAll("[^a-z0-9]", "-");
-
-        // Paso 2: Crear un código único codificado (ejemplo: UUID + tiempo en milisegundos)
-        String uniqueCode = UUID.randomUUID().toString() + "-" + System.currentTimeMillis();
-
-        // Paso 3: Codificar el código único en Base64 (sin caracteres especiales)
-        String encodedCode = Base64.getUrlEncoder().withoutPadding().encodeToString(uniqueCode.getBytes(StandardCharsets.UTF_8));
-
-        // Paso 4: Asegurarse de que la longitud sea al menos 18 caracteres
-        if (encodedCode.length() < 18) {
-            // Si la longitud es menor, ajustamos a 18 (esto es solo por seguridad)
-            encodedCode = String.format("%-18s", encodedCode).replace(' ', '0');
-        }
-
-        // Paso 5: Concatenar el username con el código único codificado
-        String slug = slugBase + "-" + encodedCode;
-
+    public String generarSlugUnico() {
+        String slug;
+        do {
+            slug = generarSlug();
+        } while (repository.existsBySlug(slug));
         return slug;
     }
+
+
+    private String generarSlug() {
+
+        String palabra1 = randomWordService.obtenerPalabraAleatoria();
+        String palabra2 = randomWordService.obtenerPalabraAleatoria();
+
+        // Paso 2: Generar un número aleatorio de 4 dígitos
+        int numeroRandom = (int) (Math.random() * 10000); // Genera un número entre 0 y 9999
+        String numeroRandomStr = String.format("%04d", numeroRandom); // Asegura que sea de 4 dígitos
+
+        // Paso 3: Concatenar las palabras y el número aleatorio
+
+        return palabra1 + "-" + palabra2 + "-#" + numeroRandomStr;
+    }
+
+
 
 
 

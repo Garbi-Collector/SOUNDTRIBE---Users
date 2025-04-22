@@ -7,6 +7,7 @@ import gabri.dev.javaspringcompose.models.enums.FileType;
 import gabri.dev.javaspringcompose.repositories.FotoRepository;
 import gabri.dev.javaspringcompose.services.MinioService;
 import io.minio.*;
+import io.minio.errors.*;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -72,6 +76,21 @@ public class MinioServiceImpl implements MinioService {
 
         // 5. Devolver el modelo
         return modelMapper.map(fotoSaved, FotoModel.class);
+    }
+
+
+    @Override
+    public void removeFoto(FotoEntity currentPhoto) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+        // Eliminar de MinIO
+        minioClient.removeObject(
+                RemoveObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(currentPhoto.getFileUrl())
+                        .build()
+        );
+
+        // Eliminar de la base de datos
+        repository.deleteById(currentPhoto.getId());
     }
 
     @Override

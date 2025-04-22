@@ -1,10 +1,12 @@
 package gabri.dev.javaspringcompose.services;
 
+import gabri.dev.javaspringcompose.dtos.auth.ChangePasswordRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.JwtLoginResponseDto;
 import gabri.dev.javaspringcompose.dtos.auth.LoginRequestDto;
 import gabri.dev.javaspringcompose.dtos.auth.RegisterRequestDto;
 import gabri.dev.javaspringcompose.dtos.user.PerfilUsuarioDto;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,6 +20,7 @@ public interface AuthService {
     void verificarCuenta(String token);
     boolean usernameExists(String username);
     List<PerfilUsuarioDto> obtenerUsuariosHabilitados();
+    void cambiarPassword(String token, ChangePasswordRequestDto request);
 
     boolean emailExists(String email);
 }

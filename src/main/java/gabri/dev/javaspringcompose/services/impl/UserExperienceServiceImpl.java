@@ -4,18 +4,25 @@ import gabri.dev.javaspringcompose.dtos.userExperience.GetAll;
 import gabri.dev.javaspringcompose.dtos.userExperience.UserDescription;
 import gabri.dev.javaspringcompose.dtos.userExperience.UserGet;
 import gabri.dev.javaspringcompose.entities.FollowerFollowedEntity;
+import gabri.dev.javaspringcompose.entities.FotoEntity;
 import gabri.dev.javaspringcompose.entities.UserEntity;
 import gabri.dev.javaspringcompose.exceptions.SoundtribeUserException;
 import gabri.dev.javaspringcompose.repositories.FollowerFollowedRepository;
+import gabri.dev.javaspringcompose.repositories.FotoRepository;
 import gabri.dev.javaspringcompose.repositories.UserRepository;
 import gabri.dev.javaspringcompose.security.JwtProvider;
+import gabri.dev.javaspringcompose.services.MinioService;
 import gabri.dev.javaspringcompose.services.UserExperienceService;
+import jakarta.transaction.Transactional;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,7 +35,14 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     private FollowerFollowedRepository followedRepository;
 
     @Autowired
+    private FotoRepository fotoRepository;
+    @Autowired
+    private MinioService minioService;
+
+    @Autowired
     private JwtProvider jwtProvider;
+    @Autowired
+    private ModelMapper modelMapper;
 
 
 
@@ -179,8 +193,6 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
 
-
-
     // ---------- Métodos privados reutilizables ----------
 
     private UserGet mapToUserGet(UserEntity user) {
@@ -212,4 +224,142 @@ public class UserExperienceServiceImpl implements UserExperienceService {
                 .map(this::mapToUserGet)
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    @Override
+    public void cambiarFotoPerfil(String token, MultipartFile file) {
+        // 1. Obtener el email del token y buscar el usuario
+        String email = jwtProvider.getEmailFromToken(token);
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new SoundtribeUserException("Usuario no encontrado"));
+
+        // 2. Verificar el archivo
+        if (file == null || file.isEmpty()) {
+            throw new SoundtribeUserException("Debe proporcionar una imagen");
+        }
+
+        // 3. Obtener la foto de perfil actual
+        FotoEntity currentPhoto = user.getFoto();
+        boolean isStandardImage = false;
+
+        // 4. Verificar si la foto actual es una imagen estándar
+        if (currentPhoto != null) {
+            isStandardImage = currentPhoto.getId() == 1 || currentPhoto.getId() == 2 ||
+                    "perfilstandar.png".equals(currentPhoto.getFileName()) ||
+                    "ADMIN.png".equals(currentPhoto.getFileName());
+        }
+
+        // 5. Subir la nueva imagen a MinIO
+        FotoEntity newPhoto = modelMapper.map(minioService.upload(file), FotoEntity.class);
+
+        // 6. Actualizar la referencia en el usuario
+        user.setFoto(newPhoto);
+        userRepository.save(user);
+
+        // 7. Si la foto anterior no era estándar, eliminarla
+        if (currentPhoto != null && !isStandardImage) {
+            try {
+                minioService.removeFoto(currentPhoto);
+            } catch (Exception e) {
+                // Log error but continue
+                System.err.println("Error al eliminar la foto anterior: " + e.getMessage());
+            }
+        }
+    }
+
+    @Transactional
+    @Override
+    public void changeDescription(String jwt, String newDescription) {
+        String email = jwtProvider.getEmailFromToken(jwt);
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new SoundtribeUserException("Usuario no encontrado"));
+
+        // Update the description
+        user.setDescripcion(newDescription);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    @Override
+    public String changeSlug(String jwt, String firstWord, String secondWord, int number) {
+        String email = jwtProvider.getEmailFromToken(jwt);
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new SoundtribeUserException("Usuario no encontrado"));
+
+        String slug = generarSlugManual(firstWord, secondWord, number);
+
+        if (userRepository.existsBySlug(slug)) {
+            throw new SoundtribeUserException("El slug ya está en uso. Elegí otro");
+        }
+
+        user.setSlug(slug);
+        userRepository.save(user);
+        return slug;
+    }
+
+
+    private String generarSlugManual(String palabra1, String palabra2, int numero) {
+        // Validación básica
+        if (palabra1 == null || palabra2 == null ||
+                palabra1.length() < 2 || palabra1.length() > 7 ||
+                palabra2.length() < 2 || palabra2.length() > 7) {
+            throw new IllegalArgumentException("Las palabras deben tener entre 2 y 7 caracteres");
+        }
+
+        if (numero < 0 || numero > 9999) {
+            throw new IllegalArgumentException("El número debe estar entre 0000 y 9999");
+        }
+
+        String numeroStr = String.format("%04d", numero); // Siempre 4 cifras
+
+        return palabra1 + "-" + palabra2 + "-#" + numeroStr;
+    }
+
+
+    @Override
+    public boolean existFirstSlug(String firstSlugPart) {
+        List<UserEntity> users = userRepository.findAll();
+        return users.stream()
+                .map(UserEntity::getSlug)
+                .filter(Objects::nonNull)
+                .anyMatch(slug -> {
+                    String[] parts = slug.split("-");
+                    return parts.length >= 1 && parts[0].equals(firstSlugPart);
+                });
+    }
+
+    @Override
+    public boolean existSecondSlug(String secondSlugPart) {
+        List<UserEntity> users = userRepository.findAll();
+        return users.stream()
+                .map(UserEntity::getSlug)
+                .filter(Objects::nonNull)
+                .anyMatch(slug -> {
+                    String[] parts = slug.split("-");
+                    return parts.length >= 2 && parts[1].equals(secondSlugPart);
+                });
+    }
+
+    @Override
+    public boolean existNumberSlug(int number) {
+        // Check if the number part of any slug matches the given number
+        List<UserEntity> users = userRepository.findAll();
+        return users.stream()
+                .map(UserEntity::getSlug)
+                .filter(Objects::nonNull)
+                .anyMatch(slug -> {
+                    String[] parts = slug.split("-");
+                    if (parts.length >= 3) {
+                        try {
+                            int slugNumber = Integer.parseInt(parts[2]);
+                            return slugNumber == number;
+                        } catch (NumberFormatException e) {
+                            return false;
+                        }
+                    }
+                    return false;
+                });
+    }
+
+
 }
