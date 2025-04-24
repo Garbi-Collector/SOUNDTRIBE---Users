@@ -24,4 +24,8 @@ public interface AuthService {
     void cambiarPassword(String token, ChangePasswordRequestDto request);
 
     boolean emailExists(String email);
+
+    void checkAndStoreImageIfMissing(String imageName);
+
+    void crearUsuariosPorDefecto();
 }
