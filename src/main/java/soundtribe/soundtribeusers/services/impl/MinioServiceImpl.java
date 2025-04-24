@@ -3,6 +3,8 @@ package soundtribe.soundtribeusers.services.impl;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import org.springframework.core.io.ClassPathResource;
 import soundtribe.soundtribeusers.entities.FotoEntity;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserMiniOException;
 import soundtribe.soundtribeusers.models.FotoModel;
@@ -166,69 +168,62 @@ public class MinioServiceImpl implements MinioService {
     @Override
     public void uploadDefaultImagesIfNotExist() {
         try {
-            String[] defaultImages = {"ADMIN.png", "perfilstandar.png"};
-            Path assetsPath = Paths.get("src/main/resources/assets");
+            String[] defaultImages = {"perfilstandar.png", "ADMIN.png"};
 
             for (String imageName : defaultImages) {
-                if (repository.existsByFileName(imageName)) {
-                    System.out.println("La imagen ya existe en la base de datos: " + imageName);
-                    continue;
+                // Verificar si la imagen ya existe en MinIO
+                try {
+                    minioClient.statObject(
+                            StatObjectArgs.builder()
+                                    .bucket(bucketName)
+                                    .object(imageName)
+                                    .build()
+                    );
+                    System.out.println("La imagen '" + imageName + "' ya existe en MinIO.");
+                } catch (Exception e) {
+                    // La imagen no existe, cargarla desde los recursos
+                    ClassPathResource resource = new ClassPathResource("assets/" + imageName);
+
+                    if (resource.exists()) {
+                        try (InputStream inputStream = resource.getInputStream()) {
+                            // Detectar el tipo de contenido
+                            String contentType = determineContentType(imageName);
+
+                            // Subir el archivo a MinIO
+                            minioClient.putObject(
+                                    PutObjectArgs.builder()
+                                            .bucket(bucketName)
+                                            .object(imageName)
+                                            .stream(inputStream, resource.contentLength(), -1)
+                                            .contentType(contentType)
+                                            .build()
+                            );
+
+                            System.out.println("Imagen por defecto '" + imageName + "' cargada en MinIO.");
+                        }
+                    } else {
+                        System.err.println("No se encontró el archivo de imagen '" + imageName + "' en los recursos.");
+                    }
                 }
-
-                Path imagePath = assetsPath.resolve(imageName);
-                if (!Files.exists(imagePath)) {
-                    System.out.println("No se encontró la imagen: " + imageName);
-                    continue;
-                }
-
-                byte[] imageBytes = Files.readAllBytes(imagePath);
-                InputStream inputStream = Files.newInputStream(imagePath);
-
-                minioClient.putObject(
-                        PutObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(imageName)
-                                .stream(inputStream, imageBytes.length, -1)
-                                .contentType(FileType.PNG_IMAGE.getMimeType())
-                                .build()
-                );
-
-                FotoEntity fotoEntity = FotoEntity.builder()
-                        .fileName(imageName)
-                        .fileType(FileType.PNG_IMAGE)
-                        .fileUrl(imageName) // El nombre en MinIO será igual
-                        .build();
-
-                repository.save(fotoEntity);
-
-                System.out.println("Imagen subida y guardada: " + imageName);
             }
         } catch (Exception e) {
-            throw new SoundtribeUserMiniOException("Error al subir imágenes por defecto: " + e.getMessage());
+            throw new SoundtribeUserMiniOException("Error al cargar imágenes por defecto: " + e.getMessage());
+        }
+    }
+
+    private String determineContentType(String fileName) {
+        if (fileName.toLowerCase().endsWith(".png")) {
+            return "image/png";
+        } else if (fileName.toLowerCase().endsWith(".jpg") || fileName.toLowerCase().endsWith(".jpeg")) {
+            return "image/jpeg";
+        } else {
+            return "application/octet-stream";
         }
     }
 
 
-    @Override
-    public void ensureBucketExists() {
-        try {
-            boolean found = minioClient.bucketExists(BucketExistsArgs.builder()
-                    .bucket(bucketName)
-                    .build());
-    
-            if (!found) {
-                minioClient.makeBucket(MakeBucketArgs.builder()
-                        .bucket(bucketName)
-                        .build());
-                System.out.println("Bucket creado: " + bucketName);
-            } else {
-                System.out.println("El bucket ya existe: " + bucketName);
-            }
-        } catch (Exception e) {
-            throw new SoundtribeUserMiniOException("Error al verificar/crear el bucket: " + e.getMessage());
-        }
-    }
-    
+
+
 
 
 }

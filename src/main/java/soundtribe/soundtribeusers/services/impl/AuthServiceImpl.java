@@ -20,7 +20,6 @@ import soundtribe.soundtribeusers.repositories.UserRepository;
 import soundtribe.soundtribeusers.security.JwtProvider;
 import soundtribe.soundtribeusers.services.MinioService;
 import soundtribe.soundtribeusers.services.AuthService;
-import jakarta.annotation.PostConstruct;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
@@ -249,16 +248,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
 
-    @PostConstruct
-    public void checkAndStoreStandardImage() {
-        minioService.ensureBucketExists();
-        minioService.uploadDefaultImagesIfNotExist();
-        checkAndStoreImageIfMissing("perfilstandar.png");
-        checkAndStoreImageIfMissing("ADMIN.png");
-        crearUsuariosPorDefecto();
-    }
 
-    private void checkAndStoreImageIfMissing(String imageName) {
+
+    @Override
+    public void checkAndStoreImageIfMissing(String imageName) {
         Optional<FotoEntity> fotoEntityOptional = fotoRepository.findByFileName(imageName);
 
         if (fotoEntityOptional.isEmpty()) {
@@ -275,6 +268,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
 
+    @Override
     public void crearUsuariosPorDefecto() {
         // Creación de usuarios con roles diferentes
         crearUsuarioPorRol("gabriel.scipioni21@gmail.com", "gabriel", Rol.ADMIN, "ADMIN.png", "el mascapito de esta red social");
