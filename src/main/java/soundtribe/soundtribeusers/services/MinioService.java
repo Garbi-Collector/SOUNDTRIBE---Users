@@ -26,5 +26,4 @@ public interface MinioService {
 
     void uploadDefaultImagesIfNotExist();
 
-    void ensureBucketExists();
 }
