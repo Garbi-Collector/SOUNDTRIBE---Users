@@ -1,5 +1,0 @@
-@startuml
-
-ping - [PingController]
-
-@enduml

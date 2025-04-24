@@ -327,12 +327,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Paso 3: Concatenar las palabras y el número aleatorio
 
-        return palabra1 + "-" + palabra2 + "-#" + numeroRandomStr;
+        return palabra1 + "-" + palabra2 + "-" + numeroRandomStr;
     }
-
-
-
-
-
 
 }
