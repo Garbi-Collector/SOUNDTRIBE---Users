@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Servicio para la base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass123
+      MYSQL_DATABASE: userDB
+      MYSQL_USER: soundtribe_user
+      MYSQL_PASSWORD: soundtribe_user
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  # Servicio para MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: fotoMinio
+      MINIO_ROOT_PASSWORD: fotoMinio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - app-network
+
+  # Servicio para tu aplicación Spring Boot
+  springboot-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: springboot-app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/userDB
+      SPRING_DATASOURCE_USERNAME: soundtribe_user
+      SPRING_DATASOURCE_PASSWORD: soundtribe_user
+      MINIO_URL: http://minio:9000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - minio
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  minio-data:

@@ -1,7 +1,0 @@
-@startuml
-
-actor actor
-actor -> PingController: ping()
-actor <- PingController: (200) "pong"
-
-@enduml

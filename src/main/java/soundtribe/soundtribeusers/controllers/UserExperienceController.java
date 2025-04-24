@@ -1,0 +1,179 @@
+package soundtribe.soundtribeusers.controllers;
+
+import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
+import soundtribe.soundtribeusers.dtos.userExperience.UserDescription;
+import soundtribe.soundtribeusers.dtos.userExperience.UserGet;
+import soundtribe.soundtribeusers.exceptions.SoundtribeUserException;
+import soundtribe.soundtribeusers.services.UserExperienceService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+@RestController
+@RequestMapping("/user")
+public class UserExperienceController {
+
+    @Autowired
+    private UserExperienceService userExperienceService;
+
+    // Endpoint para seguir a un usuario
+    @PostMapping("/follow/{id}")
+    public ResponseEntity<String> followUser(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("id") Long idToFollow
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        userExperienceService.followUser(jwt, idToFollow);
+        return ResponseEntity.ok("Seguido correctamente");
+    }
+
+    @DeleteMapping("/unfollow/{id}")
+    public ResponseEntity<String> unfollowUser(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("id") Long idToUnfollow
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        userExperienceService.unfollowUser(jwt, idToUnfollow);
+        return ResponseEntity.ok("Has dejado de seguir al usuario");
+    }
+
+    @GetMapping("/is-following/{id}")
+    public ResponseEntity<Boolean> isFollowing(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("id") Long idToCheck
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        boolean result = userExperienceService.isFollowing(jwt, idToCheck);
+        return ResponseEntity.ok(result);
+    }
+
+
+
+
+
+    // Endpoint para obtener todos los usuarios (para exploración)
+    @GetMapping("/all")
+    public ResponseEntity<GetAll> getAllUsers() {
+        return ResponseEntity.ok(userExperienceService.getAll());
+    }
+
+
+    @GetMapping("/all/jwt")
+    public ResponseEntity<GetAll> getAllUsers(
+            @RequestHeader("Authorization") String token
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        return ResponseEntity.ok(userExperienceService.getAll(jwt));
+    }
+
+    @GetMapping("/perfil/slug/{slug}")
+    public ResponseEntity<UserDescription> getUserDescriptionBySlug(@PathVariable("slug") String slug) {
+        return ResponseEntity.ok(userExperienceService.getDescriptionBySlug(slug));
+    }
+
+
+
+    // Endpoint para obtener la descripción de un usuario por ID
+    @GetMapping("/perfil/{id}")
+    public ResponseEntity<UserDescription> getUserDescription(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(userExperienceService.getDescription(id));
+    }
+
+    // Endpoint para obtener la descripción de un usuario por jwt
+    @GetMapping("/mi-perfil")
+    public ResponseEntity<UserDescription> getUserDescriptionFromJwt(
+            @RequestHeader("Authorization") String token
+    ){
+        return ResponseEntity.ok(userExperienceService.getDescriptionFromJwt(token));
+    }
+
+
+    // Endpoint para obtener la información del usuario autenticado
+    @GetMapping("/me")
+    public ResponseEntity<UserGet> getAuthenticatedUser(
+            @RequestHeader("Authorization") String token
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        return ResponseEntity.ok(userExperienceService.getUser(jwt));
+    }
+
+
+
+
+//TODO          DE ACA EN ADELANTE NO ESTA IMPLEMENTADO EN FRONT
+
+
+
+    @PostMapping(value = "/cambiar-foto", consumes = "multipart/form-data")
+    public ResponseEntity<String> cambiarFotoPerfil(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestPart(value = "file") MultipartFile file) {
+
+        try {
+            // Quitar el prefijo "Bearer " del token
+            String token = authHeader.replace("Bearer ", "");
+            userExperienceService.cambiarFotoPerfil(token, file);
+            return ResponseEntity.ok("Foto de perfil actualizada correctamente");
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar la foto de perfil: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/change-description")
+    public ResponseEntity<String> changeDescription(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String newDescription
+    ) {
+        try {
+            String jwt = token.replace("Bearer ", "");
+            userExperienceService.changeDescription(jwt, newDescription);
+            return ResponseEntity.ok("Descripción actualizada correctamente");
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar la descripción: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/generate-slug")
+    public ResponseEntity<String> generateSlug(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String firstWord,
+            @RequestParam String secondWord,
+            @RequestParam int number
+    ) {
+        try {
+            String jwt = token.replace("Bearer ", "");
+            String slug = userExperienceService.changeSlug(jwt,firstWord,secondWord,number);
+            return ResponseEntity.ok(slug);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al generar slug: " + e.getMessage());
+        }
+    }
+
+
+    @GetMapping("/check-first-slug/{firstPart}")
+    public ResponseEntity<Boolean> checkFirstSlug(@PathVariable String firstPart) {
+        boolean exists = userExperienceService.existFirstSlug(firstPart);
+        return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping("/check-second-slug/{secondPart}")
+    public ResponseEntity<Boolean> checkSecondSlug(@PathVariable String secondPart) {
+        boolean exists = userExperienceService.existSecondSlug(secondPart);
+        return ResponseEntity.ok(exists);
+    }
+
+    @GetMapping("/check-number-slug/{number}")
+    public ResponseEntity<Boolean> checkNumberSlug(@PathVariable int number) {
+        boolean exists = userExperienceService.existNumberSlug(number);
+        return ResponseEntity.ok(exists);
+    }
+}
