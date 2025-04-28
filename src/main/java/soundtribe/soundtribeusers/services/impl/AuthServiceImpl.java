@@ -42,6 +42,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Value("${app.back.url}")
     private String backUrl;
+    @Value("${app.front.url}")
+    private String frontUrl;
 
 
     @Autowired
@@ -122,7 +124,7 @@ public class AuthServiceImpl implements AuthService {
         emailService.enviarMail(NotificationEmail.builder()
                 .asunto("Porfavor active su cuenta")
                 .destinatario(userSaved.getEmail())
-                .mensaje(backUrl + "auth/accountVerification/" + token)
+                .mensaje(frontUrl + "/verificar-cuenta/" + token)
                 .build());
 
 
