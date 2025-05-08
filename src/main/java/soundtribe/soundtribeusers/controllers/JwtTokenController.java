@@ -81,6 +81,7 @@ public class JwtTokenController {
         response.put("username", user.getUsername());
         response.put("email", user.getEmail());
         response.put("role", role);
+        response.put("slug", user.getSlug());
 
         response.put("isAdmin", Rol.ADMIN.equals(user.getRol()));
         response.put("isArtista", Rol.ARTISTA.equals(user.getRol()));
