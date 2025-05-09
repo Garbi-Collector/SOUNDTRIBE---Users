@@ -8,6 +8,8 @@ import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
 import soundtribe.soundtribeusers.dtos.userExperience.UserDescription;
 import soundtribe.soundtribeusers.dtos.userExperience.UserGet;
 
+import java.util.List;
+
 @Service
 public interface UserExperienceService {
     GetAll getAll();
@@ -38,4 +40,6 @@ public interface UserExperienceService {
     boolean existSecondSlug(String secondSlugPart);
 
     boolean existNumberSlug(int number);
+
+    List<UserGet> getMutualArtistFriends(String jwt);
 }

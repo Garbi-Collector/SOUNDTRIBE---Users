@@ -1,5 +1,8 @@
 package soundtribe.soundtribeusers.services.impl;
 
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import soundtribe.soundtribeusers.dtos.notis.NotificationPost;
+import soundtribe.soundtribeusers.dtos.notis.NotificationType;
 import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
 import soundtribe.soundtribeusers.dtos.userExperience.UserDescription;
 import soundtribe.soundtribeusers.dtos.userExperience.UserGet;
@@ -7,6 +10,8 @@ import soundtribe.soundtribeusers.entities.FollowerFollowedEntity;
 import soundtribe.soundtribeusers.entities.FotoEntity;
 import soundtribe.soundtribeusers.entities.UserEntity;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserException;
+import soundtribe.soundtribeusers.external_APIS.NotificationService;
+import soundtribe.soundtribeusers.models.enums.Rol;
 import soundtribe.soundtribeusers.repositories.FollowerFollowedRepository;
 import soundtribe.soundtribeusers.repositories.FotoRepository;
 import soundtribe.soundtribeusers.repositories.UserRepository;
@@ -43,6 +48,9 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     private JwtProvider jwtProvider;
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private NotificationService notificationService;
 
 
 
@@ -165,7 +173,17 @@ public class UserExperienceServiceImpl implements UserExperienceService {
         relation.setFollower(follower);
         relation.setFollowed(followed);
         followedRepository.save(relation);
+
+        // Crear una notificación para el usuario seguido
+        notificationService.enviarNotificacion(
+                jwt,
+                NotificationPost.builder()
+                        .receivers(List.of(followed.getId())) // 👈 El usuario que fue seguido la recibe
+                        .type(NotificationType.FOLLOW)
+                        .build()
+        );
     }
+
 
     @Override
     public void unfollowUser(String jwt, Long idToUnfollow) {
@@ -362,4 +380,33 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
 
+    @Override
+    public List<UserGet> getMutualArtistFriends(String jwt) {
+        String email = jwtProvider.getEmailFromToken(jwt);
+        UserEntity currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+
+        // Obtener los usuarios artistas que son amigos mutuos (se siguen entre sí)
+        List<UserEntity> mutualArtistFriends = getMutualArtistFriendsForUser(currentUser);
+
+        // Convertir a DTO
+        return mutualArtistFriends.stream()
+                .map(this::mapToUserGet)
+                .collect(Collectors.toList());
+    }
+
+    private List<UserEntity> getMutualArtistFriendsForUser(UserEntity user) {
+        // Obtener los usuarios a los que sigue el usuario actual
+        List<UserEntity> following = followedRepository.findByFollower(user)
+                .stream()
+                .map(FollowerFollowedEntity::getFollowed)
+                .collect(Collectors.toList());
+
+        // Filtrar solo los artistas que también siguen al usuario actual (mutuo follow)
+        return following.stream()
+                .filter(followedUser ->
+                        followedUser.getRol() == Rol.ARTISTA &&
+                                followedRepository.existsByFollowerAndFollowed(followedUser, user))
+                .collect(Collectors.toList());
+    }
 }
