@@ -1,4 +1,8 @@
 
 # docker run -d  --name minio-foto  -p 9000:9000  -p 9001:9001  -v minio-data:/data  -e MINIO_ROOT_USER=fotoMinio  -e MINIO_ROOT_PASSWORD=fotoMinio  quay.io/minio/minio server /data --console-address ":9001"
 
-# docker run -d --name mysql-userdb -e MYSQL_ROOT_PASSWORD=rootpass123 -e MYSQL_DATABASE=userDB -e MYSQL_USER=soundtribe_user -e MYSQL_PASSWORD=soundtribe_user -v mysql-userdb-data:/var/lib/mysql -p 3306:3306 mysql:8
+# docker run -d --name mysql-notiDB -e MYSQL_ROOT_PASSWORD=rootpass123 -e MYSQL_DATABASE=notiDB -e MYSQL_USER=soundtribe_noti -e MYSQL_PASSWORD=soundtribe_noti -v mysql-userdb-data:/var/lib/mysql -p 3308:3308 mysql:8
+
+
+
+docker run -d --name mysql-notiDB  -e MYSQL_ROOT_PASSWORD=rootpass123  -e MYSQL_DATABASE=notiDB  -e MYSQL_USER=soundtribe_noti  -e MYSQL_PASSWORD=soundtribe_noti  -v mysql-notidb-data:/var/lib/mysql  -p 3308:3306  mysql:8

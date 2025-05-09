@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/user")
 public class UserExperienceController {
@@ -49,6 +51,14 @@ public class UserExperienceController {
         return ResponseEntity.ok(result);
     }
 
+    // Nuevo endpoint para obtener amigos artistas (followers mutuos)
+    @GetMapping("/mutual-artist-friends")
+    public ResponseEntity<List<UserGet>> getMutualArtistFriends(
+            @RequestHeader("Authorization") String token
+    ) {
+        String jwt = token.replace("Bearer ", "");
+        return ResponseEntity.ok(userExperienceService.getMutualArtistFriends(jwt));
+    }
 
 
 
