@@ -1,6 +1,8 @@
 package soundtribe.soundtribeusers.services.impl;
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import soundtribe.soundtribeusers.dtos.notis.NotificationPost;
+import soundtribe.soundtribeusers.dtos.notis.NotificationType;
 import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
 import soundtribe.soundtribeusers.dtos.userExperience.UserDescription;
 import soundtribe.soundtribeusers.dtos.userExperience.UserGet;
@@ -8,6 +10,7 @@ import soundtribe.soundtribeusers.entities.FollowerFollowedEntity;
 import soundtribe.soundtribeusers.entities.FotoEntity;
 import soundtribe.soundtribeusers.entities.UserEntity;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserException;
+import soundtribe.soundtribeusers.external_APIS.NotificationService;
 import soundtribe.soundtribeusers.models.enums.Rol;
 import soundtribe.soundtribeusers.repositories.FollowerFollowedRepository;
 import soundtribe.soundtribeusers.repositories.FotoRepository;
@@ -45,6 +48,9 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     private JwtProvider jwtProvider;
     @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private NotificationService notificationService;
 
 
 
@@ -167,7 +173,17 @@ public class UserExperienceServiceImpl implements UserExperienceService {
         relation.setFollower(follower);
         relation.setFollowed(followed);
         followedRepository.save(relation);
+
+        // Crear una notificación para el usuario seguido
+        notificationService.enviarNotificacion(
+                jwt,
+                NotificationPost.builder()
+                        .receivers(List.of(followed.getId())) // 👈 El usuario que fue seguido la recibe
+                        .type(NotificationType.FOLLOW)
+                        .build()
+        );
     }
+
 
     @Override
     public void unfollowUser(String jwt, Long idToUnfollow) {
