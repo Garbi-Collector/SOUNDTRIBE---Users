@@ -37,4 +37,7 @@ public interface FollowerFollowedRepository extends JpaRepository<FollowerFollow
 
     List<FollowerFollowedEntity> findByFollower(UserEntity follower);
 
+    @Query("SELECT f.follower FROM FollowerFollowedEntity f WHERE f.followed = :user")
+    List<UserEntity> findFollowersByFollowed(@Param("user") UserEntity user);
+
 }

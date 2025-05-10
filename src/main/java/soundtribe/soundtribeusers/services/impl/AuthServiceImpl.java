@@ -217,7 +217,16 @@ public class AuthServiceImpl implements AuthService {
         repository.save(user);
     }
 
+    @Override
+    public boolean isMyPassword(String token, String password){
+        String email = jwtProvider.getEmailFromToken(token);
 
+        UserEntity user = repository.findByEmail(email)
+                .orElseThrow(() -> new SoundtribeUserException("Usuario no encontrado"));
+
+        // Verificar que la contraseña actual sea correcta
+        return passwordEncoder.matches(password, user.getPassword());
+    }
 
 
 

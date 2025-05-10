@@ -25,6 +25,8 @@ public interface AuthService {
 
     boolean emailExists(String email);
 
+    boolean isMyPassword(String token, String password);
+
     void checkAndStoreImageIfMissing(String imageName);
 
     void crearUsuariosPorDefecto();
