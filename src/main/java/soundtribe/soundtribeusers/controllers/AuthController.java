@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -107,5 +108,17 @@ public class AuthController {
         }
     }
 
+
+    @PostMapping("/is-my-password")
+    public ResponseEntity<Boolean> isMyPassword(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> body
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        String password = body.get("password");
+
+        boolean result = authService.isMyPassword(token, password);
+        return ResponseEntity.ok(result);
+    }
 
 }
