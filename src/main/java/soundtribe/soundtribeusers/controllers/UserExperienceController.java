@@ -60,6 +60,15 @@ public class UserExperienceController {
         return ResponseEntity.ok(userExperienceService.getMutualArtistFriends(jwt));
     }
 
+    @GetMapping("/followers")
+    public ResponseEntity<List<UserGet>> getFollowers(
+            @RequestHeader("Authorization") String token
+    ) {
+        String cleanJwt = token.replace("Bearer ", "");
+        List<UserGet> followers = userExperienceService.getFollowersFromJwt(cleanJwt);
+        return ResponseEntity.ok(followers);
+    }
+
 
 
 
@@ -70,6 +79,11 @@ public class UserExperienceController {
     }
 
 
+    /**
+     * traer a todoss excepto el usuario autenticado
+     * @param token
+     * @return
+     */
     @GetMapping("/all/jwt")
     public ResponseEntity<GetAll> getAllUsers(
             @RequestHeader("Authorization") String token

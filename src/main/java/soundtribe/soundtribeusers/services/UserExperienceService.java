@@ -26,6 +26,8 @@ public interface UserExperienceService {
 
     boolean isFollowing(String jwt, Long followedId);
 
+    List<UserGet> getFollowersFromJwt(String jwt);
+
     @Transactional
     void cambiarFotoPerfil(String token, MultipartFile file);
 

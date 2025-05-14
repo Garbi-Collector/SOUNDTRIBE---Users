@@ -211,6 +211,21 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
 
+    @Transactional
+    @Override
+    public List<UserGet> getFollowersFromJwt(String jwt) {
+        String email = jwtProvider.getEmailFromToken(jwt);
+        UserEntity user = getUserByEmailOrThrow(email);
+
+        List<UserEntity> followers = followedRepository.findFollowersByFollowed(user);
+
+        return followers.stream()
+                .map(this::mapToUserGet)
+                .collect(Collectors.toList());
+    }
+
+
+
     // ---------- Métodos privados reutilizables ----------
 
     private UserGet mapToUserGet(UserEntity user) {
