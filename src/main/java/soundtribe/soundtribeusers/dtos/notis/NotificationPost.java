@@ -17,4 +17,5 @@ public class NotificationPost {
     String nameSong;
     String slugAlbum;
     String nameAlbum;
+    String mensaje;
 }

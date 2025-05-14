@@ -5,4 +5,4 @@
 
 
 
-docker run -d --name mysql-notiDB  -e MYSQL_ROOT_PASSWORD=rootpass123  -e MYSQL_DATABASE=notiDB  -e MYSQL_USER=soundtribe_noti  -e MYSQL_PASSWORD=soundtribe_noti  -v mysql-notidb-data:/var/lib/mysql  -p 3308:3306  mysql:8
+docker run -d --name mysql-donorDB  -e MYSQL_ROOT_PASSWORD=rootpass123  -e MYSQL_DATABASE=donorDB  -e MYSQL_USER=soundtribe_donor  -e MYSQL_PASSWORD=soundtribe_donor  -v mysql-donorDb-data:/var/lib/mysql  -p 3309:3306  mysql:8
