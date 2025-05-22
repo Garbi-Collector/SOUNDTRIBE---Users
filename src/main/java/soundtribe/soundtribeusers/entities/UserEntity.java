@@ -11,6 +11,7 @@ import org.hibernate.envers.Audited;
 import soundtribe.soundtribeusers.models.enums.Rol;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -54,4 +55,16 @@ public class UserEntity {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+
+    @OneToMany(mappedBy = "follower", cascade = CascadeType.REMOVE)
+    private List<FollowerFollowedEntity> seguidos;
+
+    @OneToMany(mappedBy = "followed", cascade = CascadeType.REMOVE)
+    private List<FollowerFollowedEntity> seguidores;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE)
+    private TokenEntity token;
+
+
 }
