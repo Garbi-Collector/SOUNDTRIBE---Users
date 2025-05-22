@@ -125,6 +125,22 @@ public class UserExperienceController {
 
 
 
+    @PutMapping("/change-description")
+    public ResponseEntity<String> changeDescription(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String newDescription
+    ) {
+        try {
+            String jwt = token.replace("Bearer ", "");
+            userExperienceService.changeDescription(jwt, newDescription);
+            return ResponseEntity.ok("Descripción actualizada correctamente");
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar la descripción: " + e.getMessage());
+        }
+    }
 
 //TODO          DE ACA EN ADELANTE NO ESTA IMPLEMENTADO EN FRONT
 
@@ -148,22 +164,6 @@ public class UserExperienceController {
         }
     }
 
-    @PutMapping("/change-description")
-    public ResponseEntity<String> changeDescription(
-            @RequestHeader("Authorization") String token,
-            @RequestParam String newDescription
-    ) {
-        try {
-            String jwt = token.replace("Bearer ", "");
-            userExperienceService.changeDescription(jwt, newDescription);
-            return ResponseEntity.ok("Descripción actualizada correctamente");
-        } catch (SoundtribeUserException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al actualizar la descripción: " + e.getMessage());
-        }
-    }
 
     @PostMapping("/generate-slug")
     public ResponseEntity<String> generateSlug(
