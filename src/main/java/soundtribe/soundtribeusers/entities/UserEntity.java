@@ -1,10 +1,7 @@
 package soundtribe.soundtribeusers.entities;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.envers.Audited;
@@ -15,6 +12,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
+@ToString(exclude = {"seguidos", "seguidores"})
 @NoArgsConstructor
 @Entity
 @Audited

@@ -1,5 +1,6 @@
 package soundtribe.soundtribeusers.services.impl;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import soundtribe.soundtribeusers.dtos.notis.NotificationPost;
 import soundtribe.soundtribeusers.dtos.notis.NotificationType;
@@ -56,7 +57,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
 
     //      info para rellenar
 
-
+    @Cacheable("getAllUsersCache")
     @Override
     public GetAll getAll() {
         List<UserGet> usersGets = userRepository.findAll()
@@ -69,6 +70,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
                 .build();
     }
 
+    @Cacheable("getAllUsersCache")
     @Override
     public GetAll getAll(String jwt) {
         String email = jwtProvider.getEmailFromToken(jwt);
@@ -84,7 +86,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
                 .build();
     }
 
-
+    @Cacheable("userDescriptionCache")
     @Override
     public UserDescription getDescription(Long id) {
         UserEntity user = getUserByIdOrThrow(id);
@@ -104,6 +106,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
 
+    @Cacheable("userDescriptionCache")
     @Override
     public UserDescription getDescriptionFromJwt(String jwt) {
         String email = jwtProvider.getEmailFromToken(jwt);
@@ -124,6 +127,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
 
+    @Cacheable("userDescriptionCache")
     @Override
     public UserDescription getDescriptionBySlug(String slug) {
         UserEntity user = (UserEntity) userRepository.findBySlug(slug)
@@ -143,6 +147,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
 
+    @Cacheable("userGetCache")
     @Override
     public UserGet getUser(String jwt) {
         String email = jwtProvider.getEmailFromToken(jwt);
@@ -210,7 +215,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
         return followedRepository.existsByFollowerAndFollowed(follower, followed);
     }
 
-
+    @Cacheable("ListuserGetCache")
     @Transactional
     @Override
     public List<UserGet> getFollowersFromJwt(String jwt) {
@@ -227,7 +232,7 @@ public class UserExperienceServiceImpl implements UserExperienceService {
 
 
     // ---------- Métodos privados reutilizables ----------
-
+    @Cacheable("userGetCache")
     private UserGet mapToUserGet(UserEntity user) {
         return UserGet.builder()
                 .id(user.getId())
