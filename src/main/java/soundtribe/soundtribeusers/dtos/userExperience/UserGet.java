@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class UserGet {
     private Long id;
     private String username;
+    private String rol;
     private String urlFoto;
     private String slug;
     private Long followersCount;

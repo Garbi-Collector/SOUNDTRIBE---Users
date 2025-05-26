@@ -232,11 +232,11 @@ public class UserExperienceServiceImpl implements UserExperienceService {
 
 
     // ---------- Métodos privados reutilizables ----------
-    @Cacheable("userGetCache")
     private UserGet mapToUserGet(UserEntity user) {
         return UserGet.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .rol(user.getRol().name())
                 .urlFoto(user.getFoto().getFileUrl())
                 .followersCount(followedRepository.countByFollowed(user))
                 .slug(user.getSlug())
