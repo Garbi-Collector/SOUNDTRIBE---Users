@@ -29,6 +29,9 @@ public interface UserExperienceService {
     List<UserGet> getFollowersFromJwt(String jwt);
 
     @Transactional
+    void recuperarContraseña(String token);
+
+    @Transactional
     void cambiarFotoPerfil(String token, MultipartFile file);
 
     @Transactional

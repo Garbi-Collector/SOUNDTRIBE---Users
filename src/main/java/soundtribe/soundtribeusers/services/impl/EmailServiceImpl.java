@@ -49,4 +49,31 @@ public class EmailServiceImpl {
             throw new SoundtribeUserEmailException("Error al enviar el correo: "+ e.getMessage() +", "+ e);
         }
     }
+
+
+
+
+
+    @Async
+    public void enviarResetPasswordMail(NotificationEmail email, String nuevaContrasenia) throws MessagingException {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(email.getDestinatario());
+            helper.setSubject(email.getAsunto());
+
+            Context context = new Context();
+            context.setVariable("nuevaContrasenia", nuevaContrasenia);
+            String contentHTML = templateEngine.process("getPassword", context);
+
+            helper.setText(contentHTML, true);
+            javaMailSender.send(message);
+
+        } catch (Exception e) {
+            throw new SoundtribeUserEmailException("Error al enviar correo de recuperación: " + e.getMessage());
+        }
+    }
+
+
 }

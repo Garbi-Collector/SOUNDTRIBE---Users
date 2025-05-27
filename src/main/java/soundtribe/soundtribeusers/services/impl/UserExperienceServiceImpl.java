@@ -1,7 +1,10 @@
 package soundtribe.soundtribeusers.services.impl;
 
+import jakarta.mail.MessagingException;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import soundtribe.soundtribeusers.dtos.notification.NotificationEmail;
 import soundtribe.soundtribeusers.dtos.notis.NotificationPost;
 import soundtribe.soundtribeusers.dtos.notis.NotificationType;
 import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
@@ -10,6 +13,7 @@ import soundtribe.soundtribeusers.dtos.userExperience.UserGet;
 import soundtribe.soundtribeusers.entities.FollowerFollowedEntity;
 import soundtribe.soundtribeusers.entities.FotoEntity;
 import soundtribe.soundtribeusers.entities.UserEntity;
+import soundtribe.soundtribeusers.exceptions.SoundtribeUserEmailException;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserException;
 import soundtribe.soundtribeusers.external_APIS.NotificationService;
 import soundtribe.soundtribeusers.models.enums.Rol;
@@ -27,8 +31,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,8 +49,12 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     @Autowired
     private FotoRepository fotoRepository;
     @Autowired
+    private EmailServiceImpl emailService;
+    @Autowired
     private MinioService minioService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtProvider jwtProvider;
     @Autowired
@@ -230,6 +240,37 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     }
 
 
+    @Transactional
+    @Override
+    public void recuperarContraseña(String email) {
+        // 2. Buscar al usuario (o lanzar excepción si no existe)
+        UserEntity user = getUserByEmailOrThrow(email);
+
+        // 3. Generar nueva contraseña segura
+        String nuevaPassword = generarPasswordSegura(12);
+
+        // 4. Encriptar la nueva contraseña
+        String passwordEncriptada = passwordEncoder.encode(nuevaPassword);
+        user.setPassword(passwordEncriptada);
+
+        // 5. Guardar el usuario con la nueva contraseña
+        userRepository.save(user);
+
+        // 6. Construir y enviar el email
+        NotificationEmail emailDTO = NotificationEmail.builder()
+                .destinatario(user.getEmail())
+                .asunto("Recuperación de contraseña - SoundTribe")
+                .mensaje("Se generó una nueva contraseña temporal.") // Este campo se puede omitir si no usás en el template
+                .build();
+
+        try {
+            emailService.enviarResetPasswordMail(emailDTO, nuevaPassword);
+        } catch (MessagingException e) {
+            throw new SoundtribeUserEmailException("No se pudo enviar el correo de recuperación.");
+        }
+    }
+
+
 
     // ---------- Métodos privados reutilizables ----------
     private UserGet mapToUserGet(UserEntity user) {
@@ -243,6 +284,17 @@ public class UserExperienceServiceImpl implements UserExperienceService {
                 .build();
     }
 
+    private String generarPasswordSegura(int longitud) {
+        String caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&_-.";
+        StringBuilder sb = new StringBuilder();
+        Random random = new SecureRandom();
+
+        for (int i = 0; i < longitud; i++) {
+            sb.append(caracteres.charAt(random.nextInt(caracteres.length())));
+        }
+
+        return sb.toString();
+    }
 
 
     private UserEntity getUserByIdOrThrow(Long id) {
