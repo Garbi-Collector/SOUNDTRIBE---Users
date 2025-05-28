@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
 import soundtribe.soundtribeusers.dtos.userExperience.UserDescription;
 import soundtribe.soundtribeusers.dtos.userExperience.UserGet;
+import soundtribe.soundtribeusers.entities.UserEntity;
 
 import java.util.List;
 
@@ -30,6 +31,18 @@ public interface UserExperienceService {
 
     @Transactional
     void recuperarContraseña(String token);
+
+    @Transactional
+    void CambiarContraseña(String newPassword, String slugRecovery);
+
+    @Transactional
+    boolean isSlugRecoveryValid(String slug);
+
+    @Transactional
+    UserEntity getUserBySlugRecovery(String slug);
+
+    @Transactional
+    UserGet convertToUserGet(UserEntity user);
 
     @Transactional
     void cambiarFotoPerfil(String token, MultipartFile file);

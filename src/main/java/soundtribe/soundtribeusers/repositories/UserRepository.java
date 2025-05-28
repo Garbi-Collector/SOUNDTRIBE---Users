@@ -20,4 +20,9 @@ public interface UserRepository extends JpaRepository<UserEntity,Long> {
     Optional<Object> findBySlug(String slug);
 
     boolean existsBySlug(String slug);
+
+    boolean existsBySlugRecovery(String slugRecovery);
+
+    Optional<UserEntity> findBySlugRecovery(String slugRecovery);
+
 }

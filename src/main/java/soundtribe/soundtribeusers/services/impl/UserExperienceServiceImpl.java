@@ -1,10 +1,9 @@
 package soundtribe.soundtribeusers.services.impl;
 
-import jakarta.mail.MessagingException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import soundtribe.soundtribeusers.dtos.notification.NotificationEmail;
 import soundtribe.soundtribeusers.dtos.notis.NotificationPost;
 import soundtribe.soundtribeusers.dtos.notis.NotificationType;
 import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
@@ -15,7 +14,10 @@ import soundtribe.soundtribeusers.entities.FotoEntity;
 import soundtribe.soundtribeusers.entities.UserEntity;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserEmailException;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserException;
+import soundtribe.soundtribeusers.exceptions.SoundtribeUserNotFoundException;
+import soundtribe.soundtribeusers.exceptions.SoundtribeUserValidationException;
 import soundtribe.soundtribeusers.external_APIS.NotificationService;
+import soundtribe.soundtribeusers.external_APIS.RandomWordService;
 import soundtribe.soundtribeusers.models.enums.Rol;
 import soundtribe.soundtribeusers.repositories.FollowerFollowedRepository;
 import soundtribe.soundtribeusers.repositories.FotoRepository;
@@ -32,16 +34,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
 public class UserExperienceServiceImpl implements UserExperienceService {
 
+
+
+    @Value("${app.front.url}")
+    private String frontUrl;
+
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private RandomWordService randomWordService;
 
     @Autowired
     private FollowerFollowedRepository followedRepository;
@@ -243,36 +254,135 @@ public class UserExperienceServiceImpl implements UserExperienceService {
     @Transactional
     @Override
     public void recuperarContraseña(String email) {
-        // 2. Buscar al usuario (o lanzar excepción si no existe)
+        // 1. Buscar al usuario o lanzar excepción si no existe
         UserEntity user = getUserByEmailOrThrow(email);
 
-        // 3. Generar nueva contraseña segura
-        String nuevaPassword = generarPasswordSegura(12);
-
-        // 4. Encriptar la nueva contraseña
-        String passwordEncriptada = passwordEncoder.encode(nuevaPassword);
-        user.setPassword(passwordEncriptada);
-
-        // 5. Guardar el usuario con la nueva contraseña
+        // 2. Generar un slug único para recuperación
+        String slugUnico = generarSlugUnico();
+        user.setSlugRecovery(slugUnico);
+        user.setSlugRecoveryDate(LocalDateTime.now());
         userRepository.save(user);
 
-        // 6. Construir y enviar el email
-        NotificationEmail emailDTO = NotificationEmail.builder()
-                .destinatario(user.getEmail())
-                .asunto("Recuperación de contraseña - SoundTribe")
-                .mensaje("Se generó una nueva contraseña temporal.") // Este campo se puede omitir si no usás en el template
-                .build();
+        // 3. Crear la URL para recuperación (adaptalo si tu URL de frontend cambia)
+        String url = frontUrl + "/recovery-password/" + slugUnico;
 
+        // 4. Enviar el correo con el link de recuperación
         try {
-            emailService.enviarResetPasswordMail(emailDTO, nuevaPassword);
-        } catch (MessagingException e) {
-            throw new SoundtribeUserEmailException("No se pudo enviar el correo de recuperación.");
+            emailService.enviarMailRecuperacionContraseña(user.getEmail(), url);
+        } catch (Exception e) {
+            throw new SoundtribeUserEmailException("No se pudo enviar el correo de recuperación: " + e.getMessage());
         }
     }
 
 
+    @Transactional
+    @Override
+    public void CambiarContraseña(String newPassword, String slugRecovery){
+        UserEntity userEntity = getUserBySlugRecovery(slugRecovery);
+
+        userEntity.setPassword(passwordEncoder.encode(newPassword));
+        userEntity.setSlugRecovery(null);
+        userEntity.setSlugRecoveryDate(null);
+        userRepository.save(userEntity);
+    }
+
+    @Transactional
+    @Override
+    public boolean isSlugRecoveryValid(String slug) {
+        Optional<UserEntity> optionalUser = userRepository.findBySlugRecovery(slug);
+
+        if (optionalUser.isEmpty()) {
+            return false;
+        }
+
+        UserEntity user = optionalUser.get();
+
+        if (user.getSlugRecovery() == null || user.getSlugRecoveryDate() == null) {
+            return false;
+        }
+
+        if (user.getSlugRecoveryDate().plusMinutes(30).isBefore(LocalDateTime.now())) {
+            // Limpiar datos si expiró
+            user.setSlugRecovery(null);
+            user.setSlugRecoveryDate(null);
+            userRepository.save(user);
+            return false;
+        }
+
+        return true;
+    }
+
+
+
+    @Transactional
+    @Override
+    public UserEntity getUserBySlugRecovery(String slug) {
+        UserEntity user = (UserEntity) userRepository.findBySlugRecovery(slug)
+                .orElseThrow(() -> new SoundtribeUserNotFoundException("Slug no válido"));
+
+        if (user.getSlugRecoveryDate() == null ||
+                user.getSlugRecoveryDate().plusMinutes(30).isBefore(LocalDateTime.now())) {
+
+            // Limpiar el slug si ya expiró
+            user.setSlugRecovery(null);
+            user.setSlugRecoveryDate(null);
+            userRepository.save(user);
+
+            throw new SoundtribeUserValidationException("El enlace de recuperación ha expirado.");
+        }
+
+        return user;
+    }
+
+    @Transactional
+    @Override
+    public UserGet convertToUserGet(UserEntity user) {
+        if (user == null) {
+            return null;
+        }
+
+        return UserGet.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .rol(user.getRol() != null ? user.getRol().name() : null)  // Convertir Enum a String
+                .urlFoto(user.getFoto() != null ? user.getFoto().getFileUrl() : null)  // Asumiendo que FotoEntity tiene getUrl()
+                .slug(user.getSlug())
+                .followersCount(user.getSeguidores() != null ? (long) user.getSeguidores().size() : 0L)
+                .build();
+    }
+
+
+
+
 
     // ---------- Métodos privados reutilizables ----------
+
+
+    public String generarSlugUnico() {
+        String slug;
+        do {
+            slug = generarSlug();
+        } while (userRepository.existsBySlugRecovery(slug)); // paréntesis corregidos
+        return slug;
+    }
+
+
+
+    private String generarSlug() {
+
+        String palabra1 = randomWordService.obtenerPalabraAleatoria();
+        String palabra2 = randomWordService.obtenerPalabraAleatoria();
+
+        // Paso 2: Generar un número aleatorio de 4 dígitos
+        int numeroRandom = (int) (Math.random() * 10000); // Genera un número entre 0 y 9999
+        String numeroRandomStr = String.format("%04d", numeroRandom); // Asegura que sea de 4 dígitos
+
+        // Paso 3: Concatenar las palabras y el número aleatorio
+
+        return palabra1 + "-" + palabra2 + "-" + numeroRandomStr;
+    }
+
+
     private UserGet mapToUserGet(UserEntity user) {
         return UserGet.builder()
                 .id(user.getId())

@@ -53,27 +53,30 @@ public class EmailServiceImpl {
 
 
 
-
     @Async
-    public void enviarResetPasswordMail(NotificationEmail email, String nuevaContrasenia) throws MessagingException {
+    public void enviarMailRecuperacionContraseña(String destinatario, String urlReset) {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setTo(email.getDestinatario());
-            helper.setSubject(email.getAsunto());
+            helper.setTo(destinatario);
+            helper.setSubject("Recuperación de contraseña - SoundTribe");
 
+            // Creamos el contexto con la variable que espera el template
             Context context = new Context();
-            context.setVariable("nuevaContrasenia", nuevaContrasenia);
+            context.setVariable("urlReset", urlReset);
+
+            // Procesamos el template `getPassword.html`
             String contentHTML = templateEngine.process("getPassword", context);
 
             helper.setText(contentHTML, true);
-            javaMailSender.send(message);
 
+            javaMailSender.send(message);
         } catch (Exception e) {
-            throw new SoundtribeUserEmailException("Error al enviar correo de recuperación: " + e.getMessage());
+            throw new SoundtribeUserEmailException("Error al enviar el correo de recuperación: " + e.getMessage());
         }
     }
+
 
 
 }

@@ -65,4 +65,11 @@ public class UserEntity {
     private TokenEntity token;
 
 
+    // recovery
+
+    @Column(nullable = true)
+    private String slugRecovery;
+
+    private LocalDateTime slugRecoveryDate;
+
 }

@@ -1,10 +1,14 @@
 package soundtribe.soundtribeusers.controllers;
 
+import soundtribe.soundtribeusers.dtos.user.PasswordChangeRequest;
 import soundtribe.soundtribeusers.dtos.userExperience.GetAll;
 import soundtribe.soundtribeusers.dtos.userExperience.UserDescription;
 import soundtribe.soundtribeusers.dtos.userExperience.UserGet;
+import soundtribe.soundtribeusers.entities.UserEntity;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserEmailException;
 import soundtribe.soundtribeusers.exceptions.SoundtribeUserException;
+import soundtribe.soundtribeusers.exceptions.SoundtribeUserNotFoundException;
+import soundtribe.soundtribeusers.exceptions.SoundtribeUserValidationException;
 import soundtribe.soundtribeusers.services.UserExperienceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -71,6 +75,10 @@ public class UserExperienceController {
     }
 
 
+    /**
+     * RECOVERY
+     */
+
     @PostMapping("/recuperar-password")
     public ResponseEntity<String> recuperarPassword(@RequestBody() String email) {
         try {
@@ -82,6 +90,55 @@ public class UserExperienceController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al recuperar la contraseña.");
         }
     }
+
+
+    @PutMapping("/cambiar-password")
+    public ResponseEntity<String> cambiarPassword(@RequestBody PasswordChangeRequest request) {
+        try {
+            userExperienceService.CambiarContraseña(request.getNewPassword(), request.getSlugRecovery());
+            return ResponseEntity.ok("Contraseña cambiada correctamente");
+        } catch (SoundtribeUserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al cambiar la contraseña: " + e.getMessage());
+        }
+    }
+
+
+
+    @GetMapping("/validar-slug/{slugRecovery}")
+    public ResponseEntity<?> validarSlugRecovery(@PathVariable String slugRecovery) {
+        try {
+            UserEntity user = userExperienceService.getUserBySlugRecovery(slugRecovery);
+            return ResponseEntity.ok(user.getUsername());
+        } catch (SoundtribeUserNotFoundException | SoundtribeUserValidationException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al validar el enlace de recuperación: " + ex.getMessage());
+        }
+    }
+
+
+    @GetMapping("/recuperar-password/validar/{slugRecovery}")
+    public ResponseEntity<Boolean> isSlugRecoveryValid(@PathVariable String slugRecovery) {
+        try {
+            boolean isValid = userExperienceService.isSlugRecoveryValid(slugRecovery);
+            System.out.println("recibimos este slug:" +slugRecovery);
+            System.out.println("devolvemos esta respuesta: " +isValid);
+            return ResponseEntity.ok(isValid);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(false);
+        }
+    }
+
+
+
+
+
+
 
 
     // Endpoint para obtener todos los usuarios (para exploración)
